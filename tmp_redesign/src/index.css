@@ -83,12 +83,20 @@
 
 @layer base {
   * { @apply border-border; box-sizing: border-box; }
-  html { color-scheme: dark; }
+  html { 
+    color-scheme: dark; 
+    overflow-x: hidden; /* Tambahkan ini agar tidak meluber ke samping */
+  }
   body {
     @apply font-sans antialiased;
     background-color: #0d0000;
     color: #f0f0f0;
-    min-height: 100vh;
+    min-height: 100%; /* Ubah dari 100vh ke 100% */
+    overflow-x: hidden;
+    position: relative;
+    /* Tambahkan ini untuk memaksa GPU merender lebih bersih */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 }
 
@@ -138,3 +146,4 @@
 .section-divider {
   border-top: 1px solid rgba(139, 0, 0, 0.3);
 }
+
