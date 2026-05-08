@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star, Play } from "lucide-react";
+import { Star } from "lucide-react";
 
 interface MovieCardProps {
   id: number;
@@ -11,7 +11,24 @@ interface MovieCardProps {
   size?: "sm" | "md" | "lg";
 }
 
-const POSTER_BASE = "https://image.tmdb.org/t/p";
+const POSTER_BASE = "https://image.tmdb.org/t/p/w342";
+
+function StarRating({ score }: { score?: number }) {
+  const stars = Math.round((score ?? 0) / 2);
+  return (
+    <div className="flex items-center gap-0.5 mt-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className="w-3 h-3"
+          fill={i <= stars ? "#f5c518" : "none"}
+          stroke={i <= stars ? "#f5c518" : "#555"}
+          strokeWidth={1.5}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function MovieCard({
   id,
@@ -24,49 +41,53 @@ export default function MovieCard({
 }: MovieCardProps) {
   const href = mediaType === "tv" ? `/tv/${id}` : `/movie/${id}`;
 
-  const sizeClasses = {
-    sm: "w-28 sm:w-32",
-    md: "w-36 sm:w-40",
-    lg: "w-44 sm:w-52",
-  };
-
-  const posterSize = size === "lg" ? "w342" : "w185";
+  const widthClass =
+    size === "sm" ? "w-24" : size === "lg" ? "w-44" : "w-32";
 
   return (
     <Link href={href}>
-      <div className={`${sizeClasses[size]} flex-shrink-0 group cursor-pointer`}>
-        <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-gray-900">
+      <div className={`horror-card flex-shrink-0 ${widthClass} cursor-pointer group`}>
+        {/* Poster */}
+        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a0000] mb-1.5 border border-[#8B0000]/30">
           {posterPath ? (
             <img
-              src={`${POSTER_BASE}/${posterSize}${posterPath}`}
+              src={`${POSTER_BASE}${posterPath}`}
               alt={title}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-cover"
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-800">
-              <span className="text-gray-600 text-xs text-center px-2">{title}</span>
+            <div className="w-full h-full flex items-center justify-center bg-[#1a0000]">
+              <span className="text-[#8B0000] text-2xl">🎬</span>
             </div>
           )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-            <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+
+          {/* Dark red overlay on hover */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+          {/* Year badge */}
+          {year && (
+            <div className="absolute top-1 left-1 bg-black/80 text-[#E50914] text-[9px] font-bold px-1 py-0.5 rounded">
+              {year}
+            </div>
+          )}
+
+          {/* Type badge */}
+          <div className="absolute top-1 right-1 bg-[#E50914]/90 text-white text-[8px] font-bold px-1 py-0.5 rounded uppercase">
+            {mediaType === "tv" ? "Series" : "Film"}
           </div>
-          {rating && rating > 0 && (
-            <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-black/70 rounded px-1.5 py-0.5">
-              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-              <span className="text-[10px] text-white font-medium">{rating.toFixed(1)}</span>
-            </div>
-          )}
-          {mediaType === "tv" && (
-            <div className="absolute top-1.5 right-1.5 bg-red-600 rounded px-1.5 py-0.5">
-              <span className="text-[9px] text-white font-bold">TV</span>
-            </div>
-          )}
         </div>
-        <div className="mt-2 px-0.5">
-          <p className="text-white text-xs font-medium truncate">{title}</p>
-          {year && <p className="text-gray-500 text-xs">{year}</p>}
-        </div>
+
+        {/* Title */}
+        <p className="text-gray-200 text-[11px] leading-tight line-clamp-2 font-medium">{title}</p>
+
+        {/* Stars */}
+        <StarRating score={rating} />
+
+        {/* See more link */}
+        <p className="text-[#E50914] text-[10px] mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          See more
+        </p>
       </div>
     </Link>
   );

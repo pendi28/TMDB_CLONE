@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { Star, Clock, Calendar, Play, ChevronLeft, Server } from "lucide-react";
+import { Star, Clock, Calendar, Play, ChevronLeft, Server, Heart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
@@ -18,21 +18,33 @@ const BUILTIN_LIST = [
   { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
 
+function StarRating({ score }: { score?: number }) {
+  const val = score ?? 0;
+  const stars = Math.round(val / 2);
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star key={i} className="w-4 h-4" fill={i <= stars ? "#f5c518" : "none"} stroke={i <= stars ? "#f5c518" : "#555"} strokeWidth={1.5} />
+      ))}
+      <span className="text-[#f5c518] text-sm font-bold ml-1">{val.toFixed(1)}</span>
+    </div>
+  );
+}
+
 export default function MoviePage() {
-  const { id }  = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const movieId = Number(id);
-  const [showPlayer, setShowPlayer]     = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
   const [activeServerId, setActiveServerId] = useState<string>("peachify");
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const isPeachify = activeServerId === "peachify";
 
   usePeachifyPostMessage(isPeachify && showPlayer);
 
   const { data: movie, isLoading } = useQuery<TmdbMovie>({
     queryKey: ["movie", movieId],
-    queryFn:  () => tmdb.movieDetail(movieId),
-    enabled:  !!movieId,
+    queryFn: () => tmdb.movieDetail(movieId),
+    enabled: !!movieId,
   });
 
   const { data: builtinStates } = useQuery<BuiltinServerState>({
@@ -47,13 +59,13 @@ export default function MoviePage() {
 
   const { data: settings } = useQuery<Settings | null>({
     queryKey: ["settings"],
-    queryFn:  fb.getSettings,
+    queryFn: fb.getSettings,
   });
 
   if (isLoading || !movie) {
     return (
-      <div className="min-h-screen bg-[#141414] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0d0000" }}>
+        <div className="w-10 h-10 border-2 border-[#E50914] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -66,131 +78,163 @@ export default function MoviePage() {
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
       return `https://peachify.top/embed/movie/${movieId}?${params}`;
     }
-
-    const builtin = BUILTIN_LIST.find(b => b.id === activeServerId);
-    const custom  = customServers.find(s => s.id === activeServerId);
-    let template  = builtin ? builtin.url : custom?.url;
+    const builtin = BUILTIN_LIST.find((b) => b.id === activeServerId);
+    const custom = customServers.find((s) => s.id === activeServerId);
+    let template = builtin ? builtin.url : custom?.url;
     if (!template) return "";
-
-    if (!template.includes("/") && !isNaN(Number(template))) {
-      const color  = (settings?.playerColor ?? "E50914").replace("#", "");
-      const params = new URLSearchParams({
-        server:   template,
-        color:    color,
-        autoplay: settings?.autoplay !== "false" ? "true" : "false",
-        back:     "true",
-      });
-      return `https://zxcstream.xyz/player/movie/${movieId}?${params}`;
-    }
-
-    return template
-      .replace(/{id}/g,   String(movieId))
-      .replace(/{type}/g, "movie")
-      .replace(/{imdb}/g, movie.imdb_id || "");
+    template = template
+      .replace("{type}", "movie")
+      .replace("{id}", String(movieId));
+    return template;
   };
 
-  const playerUrl = getFinalPlayerUrl();
-  const runtime   = movie.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : null;
-  const year      = movie.release_date?.slice(0, 4);
-  const genres    = movie.genres?.map((g) => g.name).join(", ");
+  const enabledBuiltins = BUILTIN_LIST.filter(
+    (b) => b.id === "peachify" || (builtinStates as BuiltinServerState)?.[b.id] !== false
+  );
+  const activeCustom = (customServers as CustomServer[]).filter((s) => s.active);
+  const allServers = [...enabledBuiltins, ...activeCustom];
+
+  const genres = movie.genres?.map((g) => g.name).join(", ") ?? "";
+  const runtime = movie.runtime;
+  const year = movie.release_date?.slice(0, 4) ?? "";
+  const director = (movie as any)?.credits?.crew?.find((c: any) => c.job === "Director")?.name;
 
   return (
-    <div className="min-h-screen bg-[#141414]">
-      <div className="relative h-[50vh] min-h-[350px] bg-black">
-        {showPlayer ? (
-          <iframe
-            ref={iframeRef}
-            key={playerUrl}
-            src={playerUrl}
-            className="w-full h-full"
-            allowFullScreen
-            allow="autoplay; fullscreen"
-            frameBorder="0"
-          />
-        ) : (
-          <>
-            {movie.backdrop_path && (
-              <img
-                src={`${IMG_BASE}/original${movie.backdrop_path}`}
-                className="absolute inset-0 w-full h-full object-cover opacity-40"
-              />
-            )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <button
-                onClick={() => setShowPlayer(true)}
-                className="w-16 h-16 rounded-full bg-red-600 hover:scale-110 transition-transform flex items-center justify-center shadow-2xl"
-              >
-                <Play className="w-8 h-8 text-white fill-white ml-1" />
-              </button>
-            </div>
-          </>
-        )}
-        <Link href="/" className="absolute top-20 left-4 flex items-center gap-1 text-white/80 hover:text-white text-sm">
-          <ChevronLeft className="w-4 h-4" /> Back
-        </Link>
-      </div>
+    <div className="min-h-screen pb-16" style={{ background: "linear-gradient(to bottom, #0d0000, #0a0000)", paddingTop: "calc(56px + var(--banner-top-height, 0px))" }}>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 pb-20">
-        <div className="mb-8 p-4 bg-gray-900/50 rounded-xl border border-white/5">
-          <div className="flex items-center gap-2 mb-4 text-white font-bold text-sm">
-            <Server className="w-4 h-4 text-red-500" /> Pilih Server
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {BUILTIN_LIST.filter(s => builtinStates?.[s.id] !== false).map((srv) => (
-              <button
-                key={srv.id}
-                onClick={() => { setActiveServerId(srv.id); setShowPlayer(true); }}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                  activeServerId === srv.id
-                    ? srv.id === "peachify"
-                      ? "bg-red-600 text-white ring-2 ring-red-400"
-                      : "bg-red-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                {srv.name}
-              </button>
-            ))}
-            {customServers.filter(s => s.active).map((srv) => (
-              <button
-                key={srv.id}
-                onClick={() => { setActiveServerId(srv.id); setShowPlayer(true); }}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                  activeServerId === srv.id ? "bg-red-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                {srv.name}
-              </button>
-            ))}
-          </div>
+      {/* Backdrop */}
+      {movie.backdrop_path && (
+        <div className="relative h-56 sm:h-72 overflow-hidden">
+          <img src={`${IMG_BASE}/original${movie.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d0000]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000]/70 to-transparent" />
+          {/* Back button */}
+          <Link href="/" className="absolute top-4 left-4 flex items-center gap-1 bg-black/60 hover:bg-[#8B0000] text-white text-sm font-bold px-3 py-1.5 rounded border border-[#8B0000]/50 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </Link>
         </div>
+      )}
 
-        <div className="flex gap-6">
-          <div className="hidden sm:block flex-shrink-0">
-            {movie.poster_path && (
-              <img src={`${IMG_BASE}/w342${movie.poster_path}`} alt={movie.title} className="w-40 rounded-md shadow-2xl" />
-            )}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-10 relative z-10">
+        <div className="flex flex-col sm:flex-row gap-6">
+
+          {/* Poster */}
+          <div className="flex-shrink-0 mx-auto sm:mx-0">
+            <div className="w-36 sm:w-44 rounded-lg overflow-hidden border border-[#8B0000]/50 shadow-[0_0_20px_rgba(139,0,0,0.4)]">
+              {movie.poster_path ? (
+                <img src={`${IMG_BASE}/w500${movie.poster_path}`} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+              ) : (
+                <div className="w-full aspect-[2/3] bg-[#1a0000] flex items-center justify-center">
+                  <span className="text-4xl">🎬</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1">
-            <h1 className="text-3xl sm:text-4xl font-black text-white mb-2">{movie.title}</h1>
-            <div className="flex flex-wrap items-center gap-3 mb-4 text-sm text-gray-400">
-              {movie.vote_average > 0 && (
-                <span className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="text-white">{movie.vote_average?.toFixed(1)}</span>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-white text-2xl sm:text-3xl font-black mb-2 leading-tight">{movie.title}</h1>
+
+            {/* Meta badges */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {year && (
+                <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-[#E50914]" />{year}
                 </span>
               )}
-              {year    && <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {year}</span>}
-              {runtime && <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {runtime}</span>}
-              {genres  && <span>{genres}</span>}
+              {runtime && (
+                <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[#E50914]" />{Math.floor(runtime / 60)}j {runtime % 60}m
+                </span>
+              )}
+              {genres && (
+                <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded">{genres}</span>
+              )}
             </div>
-            <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-6">{movie.overview}</p>
+
+            {/* Rating */}
+            <div className="mb-4">
+              <StarRating score={movie.vote_average} />
+              <p className="text-gray-600 text-xs mt-0.5">{movie.vote_count?.toLocaleString()} votes</p>
+            </div>
+
+            {/* Director */}
+            {director && (
+              <p className="text-gray-400 text-sm mb-3">
+                <span className="text-gray-600 uppercase tracking-wider text-xs">Sutradara: </span>
+                <span className="text-gray-200">{director}</span>
+              </p>
+            )}
+
+            {/* Overview */}
+            {movie.overview && (
+              <p className="text-gray-400 text-sm leading-relaxed mb-5 line-clamp-3">{movie.overview}</p>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowPlayer(!showPlayer)}
+                className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white font-bold px-6 py-2.5 rounded transition-colors shadow-[0_0_16px_rgba(229,9,20,0.4)]"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                {showPlayer ? "Tutup Player" : "Watch Now"}
+              </button>
+              <button className="flex items-center gap-2 border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] text-white font-bold px-6 py-2.5 rounded transition-colors">
+                <Heart className="w-4 h-4 text-[#E50914]" />
+                Favorit
+              </button>
+            </div>
           </div>
         </div>
 
-        {(movie.similar?.results?.length ?? 0) > 0 && (
-          <div className="mt-10">
-            <ContentRow title="Similar Movies" items={movie.similar!.results} mediaType="movie" />
+        {/* ── Player Section ───────────────────────────────── */}
+        {showPlayer && (
+          <div className="mt-8">
+            {/* Server selector */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex items-center gap-2 mr-2">
+                <Server className="w-4 h-4 text-[#E50914]" />
+                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Server</span>
+              </div>
+              {allServers.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveServerId(s.id)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${
+                    activeServerId === s.id
+                      ? "bg-[#E50914] border-[#E50914] text-white"
+                      : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914] hover:text-white"
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+
+            {/* iframe */}
+            <div className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]" style={{ paddingTop: "56.25%" }}>
+              <iframe
+                ref={iframeRef}
+                src={getFinalPlayerUrl()}
+                className="absolute inset-0 w-full h-full"
+                allowFullScreen
+                allow="autoplay; fullscreen; picture-in-picture"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── Similar Movies ───────────────────────────────── */}
+        {(movie as any)?.similar?.results?.length > 0 && (
+          <div className="mt-10 border-t border-[#8B0000]/20 pt-8">
+            <ContentRow
+              title="Film Serupa"
+              items={(movie as any).similar.results}
+              mediaType="movie"
+            />
           </div>
         )}
       </div>

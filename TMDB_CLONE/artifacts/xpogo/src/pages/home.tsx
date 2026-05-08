@@ -1,26 +1,103 @@
-import { Link } from "wouter";
-import { Play, Info, Film, Sparkles, TrendingUp, Flame, Clock3, BadgeInfo, BadgeCheck } from "lucide-react";
+import { useState, useRef } from "react";
+import { Link, useLocation } from "wouter";
+import { Search, Play, Heart, Star, ChevronLeft, ChevronRight, Film, Tv2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
-import type { TmdbListResult, TmdbListItem, CustomMovie, TmdbSyncItem, TmdbSyncStatus } from "@/lib/types";
+import type { TmdbListResult, TmdbListItem, TmdbMovie, CustomMovie } from "@/lib/types";
 import ContentRow from "@/components/ContentRow";
+import MovieCard from "@/components/MovieCard";
 
 const BACKDROP_BASE = "https://image.tmdb.org/t/p/original";
+const POSTER_BASE = "https://image.tmdb.org/t/p/w342";
+const POSTER_DETAIL = "https://image.tmdb.org/t/p/w500";
 
+/* ── Star Rating ─────────────────────────────────────────── */
+function StarRating({ score, showNum = false }: { score?: number; showNum?: boolean }) {
+  const val = score ?? 0;
+  const stars = Math.round(val / 2);
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Star
+            key={i}
+            className="w-3.5 h-3.5"
+            fill={i <= stars ? "#f5c518" : "none"}
+            stroke={i <= stars ? "#f5c518" : "#555"}
+            strokeWidth={1.5}
+          />
+        ))}
+      </div>
+      {showNum && <span className="text-[#f5c518] text-sm font-bold ml-1">{val.toFixed(1)}</span>}
+    </div>
+  );
+}
+
+/* ── Horizontal Carousel ─────────────────────────────────── */
+function HorrorCarousel({ items, mediaType }: { items: TmdbListItem[]; mediaType?: "movie" | "tv" }) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const scroll = (dir: "left" | "right") => {
+    if (!rowRef.current) return;
+    rowRef.current.scrollBy({ left: dir === "left" ? -320 : 320, behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={() => scroll("left")}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <div className="bg-[#8B0000] hover:bg-[#E50914] text-white rounded-r w-7 h-14 flex items-center justify-center transition-colors shadow-lg">
+          <ChevronLeft className="w-5 h-5" />
+        </div>
+      </button>
+
+      <div ref={rowRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pl-1 pr-1">
+        {items.map((item) => {
+          const type = (item.media_type as "movie" | "tv") ?? mediaType ?? "movie";
+          const title = item.title ?? item.name ?? "";
+          const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4);
+          return (
+            <MovieCard
+              key={item.id}
+              id={item.id}
+              title={title}
+              posterPath={item.poster_path}
+              rating={item.vote_average}
+              year={year}
+              mediaType={type}
+            />
+          );
+        })}
+      </div>
+
+      <button
+        onClick={() => scroll("right")}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <div className="bg-[#8B0000] hover:bg-[#E50914] text-white rounded-l w-7 h-14 flex items-center justify-center transition-colors shadow-lg">
+          <ChevronRight className="w-5 h-5" />
+        </div>
+      </button>
+    </div>
+  );
+}
+
+/* ── Custom Movie Card ───────────────────────────────────── */
 function CustomMovieCard({ m }: { m: CustomMovie }) {
   return (
     <Link href={m.tmdbId ? `/movie/${m.tmdbId}` : `/movie/${m.id}`}>
-      <div className="flex-shrink-0 w-32 cursor-pointer group">
-        <div className="relative rounded-md overflow-hidden aspect-[2/3] bg-gray-800 mb-1.5 transition-transform group-hover:scale-105">
+      <div className="horror-card flex-shrink-0 w-32 cursor-pointer group">
+        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a0000] mb-1.5 border border-[#8B0000]/30">
           {m.posterUrl ? (
             <img src={m.posterUrl} alt={m.title} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Film className="w-8 h-8 text-gray-600" />
+              <Film className="w-8 h-8 text-[#8B0000]" />
             </div>
           )}
-          <div className="absolute top-1.5 left-1.5 bg-black/70 text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded">
+          <div className="absolute top-1 left-1 bg-[#E50914]/90 text-white text-[9px] font-bold px-1 py-0.5 rounded uppercase">
             {m.type === "series" ? "Series" : "Film"}
           </div>
         </div>
@@ -30,203 +107,349 @@ function CustomMovieCard({ m }: { m: CustomMovie }) {
   );
 }
 
-function StatChip({ icon: Icon, label, value }: { icon: typeof Sparkles; label: string; value: string }) {
+/* ── Featured Movie Card ─────────────────────────────────── */
+function FeaturedMovie({ item }: { item: TmdbListItem }) {
+  const type = (item.media_type as "movie" | "tv") ?? "movie";
+  const title = item.title ?? item.name ?? "";
+  const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4);
+
+  const { data: detail } = useQuery<TmdbMovie>({
+    queryKey: ["featured-detail", item.id, type],
+    queryFn: () => type === "tv" ? tmdb.tvDetail(item.id) as any : tmdb.movieDetail(item.id),
+    enabled: !!item.id,
+  });
+
+  const runtime = (detail as any)?.runtime ?? (detail as any)?.episode_run_time?.[0];
+  const genres = detail?.genres?.slice(0, 2).map((g) => g.name).join(", ") ?? "";
+  const director = (detail as any)?.credits?.crew?.find((c: any) => c.job === "Director")?.name
+    ?? (detail as any)?.created_by?.[0]?.name ?? "—";
+  const score = item.vote_average ?? 0;
+  const votes = (detail as any)?.vote_count ?? 0;
+
   return (
-    <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-white border border-white/10">
-      <Icon className="w-4 h-4 text-[#01b4e4]" />
-      <span className="text-xs font-semibold uppercase tracking-wide text-white/70">{label}</span>
-      <span className="text-sm font-bold">{value}</span>
+    <div className="relative rounded-xl overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]">
+      {/* Backdrop */}
+      {item.backdrop_path && (
+        <div className="absolute inset-0">
+          <img
+            src={`${BACKDROP_BASE}${item.backdrop_path}`}
+            alt={title}
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000] via-[#0d0000]/80 to-[#0d0000]/50" />
+        </div>
+      )}
+
+      <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5">
+        {/* Poster */}
+        <div className="flex-shrink-0">
+          <div className="w-24 sm:w-28 rounded overflow-hidden border border-[#8B0000]/50 shadow-lg">
+            {item.poster_path ? (
+              <img src={`${POSTER_DETAIL}${item.poster_path}`} alt={title} className="w-full aspect-[2/3] object-cover" />
+            ) : (
+              <div className="w-full aspect-[2/3] bg-[#1a0000] flex items-center justify-center">
+                <Film className="w-8 h-8 text-[#8B0000]" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-white text-xl sm:text-2xl font-black mb-2 leading-tight">{title}</h2>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-3 text-sm">
+            {genres && (
+              <div className="flex gap-2">
+                <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Genre</span>
+                <span className="text-gray-200 text-xs">{genres}</span>
+              </div>
+            )}
+            {runtime && (
+              <div className="flex gap-2">
+                <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Durasi</span>
+                <span className="text-gray-200 text-xs">{Math.floor(runtime / 60)}j {runtime % 60}m</span>
+              </div>
+            )}
+            {director !== "—" && (
+              <div className="flex gap-2">
+                <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Sutradara</span>
+                <span className="text-gray-200 text-xs line-clamp-1">{director}</span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Rating Usia</span>
+              <span className="text-gray-200 text-xs">17+</span>
+            </div>
+          </div>
+
+          {/* Score */}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[#f5c518] text-2xl font-black">{score.toFixed(1)}</span>
+            <div>
+              <StarRating score={score} />
+              <p className="text-gray-500 text-[10px] mt-0.5">{votes.toLocaleString()} vote</p>
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <Link href={type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`}>
+              <button className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white text-sm font-bold px-5 py-2 rounded transition-colors shadow-[0_0_12px_rgba(229,9,20,0.4)]">
+                <Play className="w-4 h-4 fill-white" />
+                Watch Trailer
+              </button>
+            </Link>
+            <button className="flex items-center gap-2 border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] hover:bg-[#8B0000]/20 text-white text-sm font-bold px-5 py-2 rounded transition-colors">
+              <Heart className="w-4 h-4 text-[#E50914]" />
+              Add to Favorit
+            </button>
+          </div>
+        </div>
+
+        {/* Right poster (decorative) */}
+        <div className="hidden lg:block flex-shrink-0">
+          <div className="w-20 rounded overflow-hidden border border-[#8B0000]/30 opacity-60">
+            {item.poster_path && (
+              <img src={`${POSTER_DETAIL}${item.poster_path}`} alt="" className="w-full aspect-[2/3] object-cover" />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function yearBuckets(items: TmdbListItem[]) {
-  const map = new Map<string, TmdbListItem[]>();
-  items.forEach((item) => {
-    const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4) || "Unknown";
-    map.set(year, [...(map.get(year) ?? []), item]);
-  });
-  return [...map.entries()].sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 4);
-}
+/* ── Section Header ──────────────────────────────────────── */
+function SectionHeader({ title, searchable = false }: { title: string; searchable?: boolean }) {
+  const [, navigate] = useLocation();
+  const [q, setQ] = useState("");
 
-function SectionLink({ href, title, desc }: { href: string; title: string; desc: string }) {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+  };
+
   return (
-    <Link href={href} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white transition-colors hover:bg-white/10">
-      <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Browse</p>
-      <div className="mt-2 text-lg font-black">{title}</div>
-      <p className="mt-2 text-sm text-gray-300">{desc}</p>
-    </Link>
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-5 bg-[#E50914] rounded-full flex-shrink-0" />
+        <h2 className="text-white text-sm font-black uppercase tracking-widest">{title}</h2>
+      </div>
+      {searchable && (
+        <form onSubmit={handleSearch} className="flex items-center gap-2">
+          <span className="text-gray-400 text-xs uppercase tracking-widest font-bold">SEARCH</span>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#E50914]" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="..."
+              className="bg-[#1a0000] border border-[#8B0000]/50 text-white text-xs rounded pl-7 pr-3 py-1.5 w-32 focus:outline-none focus:border-[#E50914] placeholder:text-gray-700"
+            />
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
+/* ── Main Home Page ──────────────────────────────────────── */
 export default function HomePage() {
-  const { data: trending } = useQuery<TmdbListResult>({ queryKey: ["trending"], queryFn: () => tmdb.trending() });
-  const { data: popularMovies } = useQuery<TmdbListResult>({ queryKey: ["popular-movies"], queryFn: () => tmdb.popularMovies() });
-  const { data: popularTv } = useQuery<TmdbListResult>({ queryKey: ["popular-tv"], queryFn: () => tmdb.popularTv() });
-  const { data: topMovies } = useQuery<TmdbListResult>({ queryKey: ["top-movies"], queryFn: () => tmdb.topMovies() });
-  const { data: topTv } = useQuery<TmdbListResult>({ queryKey: ["top-tv"], queryFn: () => tmdb.topTv() });
-  const { data: nowPlaying } = useQuery<TmdbListResult>({ queryKey: ["now-playing"], queryFn: () => tmdb.nowPlaying() });
-  const { data: upcoming } = useQuery<TmdbListResult>({ queryKey: ["upcoming"], queryFn: () => tmdb.upcoming() });
-  const { data: onTv } = useQuery<TmdbListResult>({ queryKey: ["on-tv"], queryFn: () => tmdb.onTv() });
-  const { data: airingToday } = useQuery<TmdbListResult>({ queryKey: ["airing-today"], queryFn: () => tmdb.airingToday() });
-  const { data: customMovies = [] } = useQuery<CustomMovie[]>({ queryKey: ["custom_movies"], queryFn: fb.getCustomMovies });
-  const { data: syncItems = [] } = useQuery<TmdbSyncItem[]>({ queryKey: ["tmdb_sync_items"], queryFn: fb.getTmdbSyncItems });
-  const { data: syncStatus } = useQuery<TmdbSyncStatus | null>({ queryKey: ["tmdb_sync_status"], queryFn: fb.getTmdbSyncStatus });
+  const { data: trending } = useQuery<TmdbListResult>({
+    queryKey: ["trending"],
+    queryFn: () => tmdb.trending(),
+  });
+  const { data: popularMovies } = useQuery<TmdbListResult>({
+    queryKey: ["popular-movies"],
+    queryFn: () => tmdb.popularMovies(),
+  });
+  const { data: popularTv } = useQuery<TmdbListResult>({
+    queryKey: ["popular-tv"],
+    queryFn: () => tmdb.popularTv(),
+  });
+  const { data: topMovies } = useQuery<TmdbListResult>({
+    queryKey: ["top-movies"],
+    queryFn: () => tmdb.topMovies(),
+  });
+  const { data: nowPlaying } = useQuery<TmdbListResult>({
+    queryKey: ["now-playing"],
+    queryFn: () => tmdb.nowPlaying(),
+  });
+  const { data: upcoming } = useQuery<TmdbListResult>({
+    queryKey: ["upcoming"],
+    queryFn: () => tmdb.upcoming(),
+  });
+  const { data: topTv } = useQuery<TmdbListResult>({
+    queryKey: ["top-tv"],
+    queryFn: () => tmdb.topTv(),
+  });
+  const { data: customMovies = [] } = useQuery<CustomMovie[]>({
+    queryKey: ["custom_movies"],
+    queryFn: fb.getCustomMovies,
+  });
 
-  const hero = trending?.results?.[0] as TmdbListItem | undefined;
-  const similar = [
-    ...(trending?.results ?? []),
-    ...(popularMovies?.results ?? []),
-    ...(popularTv?.results ?? []),
-  ].filter((item, index, self) => self.findIndex((x) => x.id === item.id) === index).slice(0, 12);
-  const buckets = yearBuckets([...(popularMovies?.results ?? []), ...(topMovies?.results ?? []), ...(nowPlaying?.results ?? []), ...(upcoming?.results ?? [])]);
-  const latestSync = syncItems.slice().sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).slice(0, 8);
+  const trendingItems = trending?.results ?? [];
+  const featured = trendingItems[0];
+  const carouselItems = trendingItems.slice(0, 12);
+  const seeMoreItems = trendingItems.slice(12, 20);
 
   return (
-    <div className="min-h-screen bg-[#141414]">
-      {hero && (
-        <section className="relative min-h-[82vh] overflow-hidden border-b border-white/5">
-          {hero.backdrop_path && (
-            <img
-              src={`${BACKDROP_BASE}${hero.backdrop_path}`}
-              alt={hero.title ?? hero.name}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
+    <div
+      className="min-h-screen"
+      style={{
+        background: "linear-gradient(to bottom, #0d0000 0%, #100000 40%, #0a0000 100%)",
+        paddingTop: "calc(56px + var(--banner-top-height, 0px))",
+      }}
+    >
+      {/* ── Hero Backdrop ──────────────────────────── */}
+      {featured?.backdrop_path && (
+        <div className="relative h-52 sm:h-64 overflow-hidden">
+          <img
+            src={`${BACKDROP_BASE}${featured.backdrop_path}`}
+            alt=""
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0d0000]/30 via-transparent to-[#0d0000]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000]/60 to-transparent" />
 
-          <div className="relative mx-auto flex min-h-[82vh] max-w-7xl items-end px-4 pb-10 pt-24 sm:px-8 lg:pb-16">
-            <div className="max-w-3xl space-y-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatChip icon={TrendingUp} label="Trending" value="Now" />
-                <StatChip icon={Flame} label="Vote" value={hero.vote_average?.toFixed(1) ?? "0.0"} />
-                <StatChip icon={Clock3} label="Type" value={(hero.media_type ?? "movie").toUpperCase()} />
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#01b4e4]">Featured Title</p>
-                <h1 className="text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">{hero.title ?? hero.name}</h1>
-                <p className="max-w-2xl text-sm leading-6 text-gray-200 sm:text-base">{hero.overview}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Link href={hero.media_type === "tv" ? `/tv/${hero.id}` : `/movie/${hero.id}`} className="inline-flex items-center gap-2 rounded-md bg-[#e50914] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#f6121d]"><Play className="h-5 w-5 fill-white" />Watch Now</Link>
-                <Link href={hero.media_type === "tv" ? `/tv/${hero.id}` : `/movie/${hero.id}`} className="inline-flex items-center gap-2 rounded-md bg-white/15 px-5 py-3 font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/25"><Info className="h-5 w-5" />More Info</Link>
-              </div>
-            </div>
-          </div>
-        </section>
+          {/* Blood drip effect */}
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0d0000] to-transparent" />
+        </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-8">
-        <div className="mb-8 grid gap-3 sm:grid-cols-3">
-          <SectionLink href="/movies" title="Movies" desc="Popular, top rated, upcoming, and now playing." />
-          <SectionLink href="/tv" title="TV Shows" desc="Popular, top rated, on TV, and airing today." />
-          <SectionLink href="/people" title="People" desc="Popular cast and crew on TMDB-style pages." />
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 -mt-8 relative z-10">
 
-        {customMovies.length > 0 && <div className="mb-8"><h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-white"><Film className="h-5 w-5 text-red-500" />Film & Serial Khusus</h2><div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">{customMovies.map((m) => <CustomMovieCard key={m.id} m={m} />)}</div></div>}
+        {/* ── CHOOSE YOUR MOVIE carousel ─────────────── */}
+        <section className="mb-8">
+          <SectionHeader title="CHOOSE YOUR MOVIE" searchable />
+          <HorrorCarousel items={carouselItems} />
+        </section>
 
-        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-2 text-white font-bold mb-3"><BadgeInfo className="w-5 h-5 text-[#01b4e4]" />Similar / Recommended</div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {similar.map((item) => (
-              <Link key={`${item.media_type ?? "movie"}-${item.id}`} href={item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`} className="w-32 flex-shrink-0">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-gray-800">
-                  {item.poster_path ? <img src={`https://image.tmdb.org/t/p/w185${item.poster_path}`} alt={item.title ?? item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">No Poster</div>}
-                  <div className="absolute top-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">{item.vote_average?.toFixed(1) ?? "0.0"}</div>
-                </div>
-                <p className="mt-1 line-clamp-1 text-xs text-white">{item.title ?? item.name}</p>
-                <p className="text-[11px] text-gray-400">{(item.release_date ?? item.first_air_date ?? "").slice(0, 4) || "Unknown"}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-2 text-white font-bold mb-3"><BadgeInfo className="w-5 h-5 text-[#01b4e4]" />Per Tahun</div>
-          <div className="space-y-4">
-            {buckets.map(([year, items]) => (
-              <div key={year}>
-                <div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-white">{year}</p><p className="text-xs text-gray-400">{items.length} titles</p></div>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">{items.slice(0, 8).map((item) => <Link key={`${year}-${item.id}`} href={item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`} className="w-32 flex-shrink-0"><div className="relative aspect-[2/3] overflow-hidden rounded-md bg-gray-800">{item.poster_path ? <img src={`https://image.tmdb.org/t/p/w185${item.poster_path}`} alt={item.title ?? item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">No Poster</div>}</div><p className="mt-1 line-clamp-1 text-xs text-white">{item.title ?? item.name}</p></Link>)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-2 text-white font-bold mb-3"><BadgeInfo className="w-5 h-5 text-[#01b4e4]" />Kategori Lengkap</div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link href="/movies" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Popular Movies</p><p className="text-sm text-gray-300 mt-1">Daftar film populer.</p></Link>
-            <Link href="/movies/top-rated" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Top Rated Movies</p><p className="text-sm text-gray-300 mt-1">Rating tertinggi.</p></Link>
-            <Link href="/movies/upcoming" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Upcoming Movies</p><p className="text-sm text-gray-300 mt-1">Film tayang mendatang.</p></Link>
-            <Link href="/movies/now-playing" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Now Playing</p><p className="text-sm text-gray-300 mt-1">Sedang tayang sekarang.</p></Link>
-            <Link href="/tv" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Popular TV</p><p className="text-sm text-gray-300 mt-1">Series populer.</p></Link>
-            <Link href="/tv/top-rated" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Top Rated TV</p><p className="text-sm text-gray-300 mt-1">Series dengan rating tinggi.</p></Link>
-            <Link href="/tv/on-tv" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">On TV</p><p className="text-sm text-gray-300 mt-1">Sedang berjalan.</p></Link>
-            <Link href="/tv/airing-today" className="rounded-xl bg-black/30 border border-white/10 p-4 text-white"><p className="font-bold">Airing Today</p><p className="text-sm text-gray-300 mt-1">Episode hari ini.</p></Link>
-          </div>
-        </div>
-
-        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-2 text-white font-bold mb-3"><BadgeInfo className="w-5 h-5 text-[#01b4e4]" />TMDB Highlights</div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(trending?.results ?? []).slice(0, 3).map((item, index) => (
-              <div key={item.id} className="rounded-xl bg-black/30 border border-white/10 p-3 text-white">
-                <p className="text-xs text-gray-400 uppercase tracking-widest">#{index + 1}</p>
-                <p className="mt-1 font-bold line-clamp-1">{item.title ?? item.name}</p>
-                <p className="mt-1 text-sm text-gray-300 line-clamp-2">{item.overview}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {syncStatus?.lastSyncAt && (
-          <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <BadgeCheck className="w-5 h-5 text-green-400" />
-              Sync TMDB
-            </div>
-            <p className="mt-2">Terakhir sync: {new Date(syncStatus.lastSyncAt).toLocaleString("id-ID")}</p>
-            <p>Tambah: {syncStatus.lastSyncAdded ?? 0} · Update: {syncStatus.lastSyncUpdated ?? 0} · Total: {syncStatus.lastSyncTotal ?? 0}</p>
-          </div>
+        {/* ── Featured Movie (Siksa Neraka style) ──── */}
+        {featured && (
+          <section className="mb-8">
+            <FeaturedMovie item={featured} />
+          </section>
         )}
 
-        {latestSync.length > 0 && (
-          <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 flex items-center gap-2 text-white font-bold">
-              <BadgeCheck className="w-5 h-5 text-green-400" />
-              Baru Rilis
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {latestSync.map((item) => (
-                <Link key={`${item.mediaType}-${item.tmdbId}`} href={item.mediaType === "tv" ? `/tv/${item.tmdbId}` : `/movie/${item.tmdbId}`} className="w-32 flex-shrink-0">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-gray-800">
-                    {item.posterPath ? (
-                      <img src={`https://image.tmdb.org/t/p/w185${item.posterPath}`} alt={item.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">No Poster</div>
-                    )}
-                    <div className="absolute top-1.5 left-1.5 rounded bg-green-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">NEW</div>
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-white">{item.title}</p>
-                </Link>
+        {/* ── Custom Movies (from Firebase) ─────────── */}
+        {customMovies.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="KOLEKSI KAMI" />
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              {customMovies.map((m) => (
+                <CustomMovieCard key={m.id} m={m} />
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {trending?.results && <ContentRow title="Trending Now" items={trending.results} />}
-        {popularMovies?.results && <ContentRow title="Popular Movies" items={popularMovies.results} mediaType="movie" />}
-        {popularTv?.results && <ContentRow title="Popular TV Shows" items={popularTv.results} mediaType="tv" />}
-        {topMovies?.results && <ContentRow title="Top Rated Movies" items={topMovies.results} mediaType="movie" />}
-        {topTv?.results && <ContentRow title="Top Rated TV Shows" items={topTv.results} mediaType="tv" />}
-        {nowPlaying?.results && <ContentRow title="Now Playing Movies" items={nowPlaying.results} mediaType="movie" />}
-        {upcoming?.results && <ContentRow title="Upcoming Movies" items={upcoming.results} mediaType="movie" />}
-        {onTv?.results && <ContentRow title="On TV" items={onTv.results} mediaType="tv" />}
-        {airingToday?.results && <ContentRow title="Airing Today" items={airingToday.results} mediaType="tv" />}
+        {/* ── Now Playing ──────────────────────────── */}
+        {(nowPlaying?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="NOW PLAYING" />
+            <HorrorCarousel items={nowPlaying!.results} mediaType="movie" />
+          </section>
+        )}
+
+        {/* ── Popular Movies ────────────────────────── */}
+        {(popularMovies?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="POPULAR MOVIES" />
+            <HorrorCarousel items={popularMovies!.results} mediaType="movie" />
+          </section>
+        )}
+
+        {/* ── Top Rated Movies ─────────────────────── */}
+        {(topMovies?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <div className="section-divider pt-6 mb-4" />
+            <SectionHeader title="TOP RATED MOVIES" />
+            <HorrorCarousel items={topMovies!.results} mediaType="movie" />
+          </section>
+        )}
+
+        {/* ── Upcoming Movies ──────────────────────── */}
+        {(upcoming?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="UPCOMING" />
+            <HorrorCarousel items={upcoming!.results} mediaType="movie" />
+          </section>
+        )}
+
+        {/* ── Popular TV Shows ─────────────────────── */}
+        {(popularTv?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <div className="section-divider pt-6 mb-4" />
+            <SectionHeader title="POPULAR TV SHOWS" />
+            <HorrorCarousel items={popularTv!.results} mediaType="tv" />
+          </section>
+        )}
+
+        {/* ── Top Rated TV ─────────────────────────── */}
+        {(topTv?.results?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="TOP RATED SERIES" />
+            <HorrorCarousel items={topTv!.results} mediaType="tv" />
+          </section>
+        )}
+
+        {/* ── SEE MORE (Trending) ───────────────────── */}
+        {seeMoreItems.length > 0 && (
+          <section className="mb-8">
+            <div className="section-divider pt-6 mb-4" />
+            <SectionHeader title="SEE MORE" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+              {seeMoreItems.map((item) => {
+                const type = (item.media_type as "movie" | "tv") ?? "movie";
+                const title = item.title ?? item.name ?? "";
+                const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4);
+                return (
+                  <MovieCard
+                    key={item.id}
+                    id={item.id}
+                    title={title}
+                    posterPath={item.poster_path}
+                    rating={item.vote_average}
+                    year={year}
+                    mediaType={type}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Browse Sections ──────────────────────── */}
+        <div className="section-divider pt-6 mb-6" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+          {[
+            { href: "/movies", label: "ALL MOVIES", icon: Film, desc: "Film populer, top rated, upcoming" },
+            { href: "/tv", label: "TV SHOWS", icon: Tv2, desc: "Series populer & top rated" },
+            { href: "/movies/now-playing", label: "NOW PLAYING", icon: Play, desc: "Tayang sekarang di bioskop" },
+            { href: "/movies/top-rated", label: "TOP RATED", icon: Star, desc: "Film dengan rating tertinggi" },
+            { href: "/movies/upcoming", label: "UPCOMING", icon: Film, desc: "Segera hadir" },
+            { href: "/tv/top-rated", label: "BEST SERIES", icon: Tv2, desc: "Series terbaik sepanjang masa" },
+          ].map(({ href, label, icon: Icon, desc }) => (
+            <Link key={href} href={href}>
+              <div className="group border border-[#8B0000]/30 bg-[#1a0000]/50 hover:bg-[#1a0000] hover:border-[#E50914]/50 rounded-lg p-3 transition-all cursor-pointer">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="w-4 h-4 text-[#E50914]" />
+                  <span className="text-white text-xs font-black tracking-widest">{label}</span>
+                </div>
+                <p className="text-gray-500 text-[10px]">{desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* ── Footer ───────────────────────────────── */}
+        <div className="text-center py-6 border-t border-[#8B0000]/20">
+          <p className="text-[#8B0000] text-xs font-black tracking-widest">XPOGO</p>
+          <p className="text-gray-700 text-[10px] mt-1">© 2025 • Movie & Series Streaming</p>
+        </div>
       </div>
     </div>
   );

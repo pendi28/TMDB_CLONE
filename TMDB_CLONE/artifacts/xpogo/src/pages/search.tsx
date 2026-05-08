@@ -8,10 +8,10 @@ import MovieCard from "@/components/MovieCard";
 
 export default function SearchPage() {
   const [location] = useLocation();
-  const initialQ   = new URLSearchParams(
+  const initialQ = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   ).get("q") ?? "";
-  const [query,      setQuery]      = useState(initialQ);
+  const [query, setQuery] = useState(initialQ);
   const [debouncedQ, setDebouncedQ] = useState(initialQ);
 
   useEffect(() => {
@@ -27,8 +27,8 @@ export default function SearchPage() {
 
   const { data, isLoading } = useQuery<TmdbListResult>({
     queryKey: ["search", debouncedQ],
-    queryFn:  () => tmdb.search(debouncedQ),
-    enabled:  debouncedQ.length > 1,
+    queryFn: () => tmdb.search(debouncedQ),
+    enabled: debouncedQ.length > 1,
   });
 
   const results = (data?.results ?? []).filter(
@@ -36,53 +36,72 @@ export default function SearchPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#141414] pt-24 pb-20 px-4 sm:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="relative max-w-xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+    <div
+      className="min-h-screen pb-20"
+      style={{
+        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
+        paddingTop: "calc(56px + var(--banner-top-height, 0px) + 24px)",
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+
+        {/* Search bar */}
+        <div className="mb-8 max-w-xl">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#E50914]" />
             <input
               type="text"
-              placeholder="Search for movies, TV shows..."
+              placeholder="Cari film, series..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
-              className="w-full bg-white/10 border border-white/20 text-white placeholder-gray-500 text-base rounded-lg pl-12 pr-4 py-3 focus:outline-none focus:border-red-600"
+              className="w-full bg-[#1a0000] border border-[#8B0000] text-white rounded-lg pl-12 pr-4 py-3 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600 text-sm"
             />
-            {isLoading && (
-              <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
-            )}
           </div>
         </div>
 
-        {debouncedQ.length > 1 && (
-          <div>
-            <h2 className="text-white text-lg font-semibold mb-4">
-              {results.length > 0 ? `${results.length} results for "${debouncedQ}"`
-                : isLoading ? "Searching..."
-                : `No results for "${debouncedQ}"`}
-            </h2>
-            <div className="flex flex-wrap gap-4">
-              {results.map((item: TmdbListItem) => (
-                <MovieCard
-                  key={item.id}
-                  id={item.id}
-                  title={item.title ?? item.name ?? ""}
-                  posterPath={item.poster_path}
-                  rating={item.vote_average}
-                  year={(item.release_date ?? item.first_air_date ?? "").slice(0, 4)}
-                  mediaType={item.media_type as "movie" | "tv"}
-                  size="md"
-                />
-              ))}
-            </div>
+        {/* Results */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-[#E50914] animate-spin" />
           </div>
-        )}
-
-        {debouncedQ.length <= 1 && (
-          <div className="text-center py-20">
-            <Search className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">Type something to search</p>
+        ) : results.length > 0 ? (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-5 bg-[#E50914] rounded-full" />
+              <h2 className="text-white text-sm font-black uppercase tracking-widest">
+                Hasil untuk "{debouncedQ}" <span className="text-gray-500 font-normal">({results.length} ditemukan)</span>
+              </h2>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+              {results.map((item: TmdbListItem) => {
+                const type = (item.media_type as "movie" | "tv") ?? "movie";
+                const title = item.title ?? item.name ?? "";
+                const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4);
+                return (
+                  <MovieCard
+                    key={item.id}
+                    id={item.id}
+                    title={title}
+                    posterPath={item.poster_path}
+                    rating={item.vote_average}
+                    year={year}
+                    mediaType={type}
+                  />
+                );
+              })}
+            </div>
+          </>
+        ) : debouncedQ.length > 1 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="text-5xl mb-4">🔍</div>
+            <h3 className="text-white text-lg font-bold mb-2">Tidak ditemukan</h3>
+            <p className="text-gray-500 text-sm">Coba kata kunci lain</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Search className="w-12 h-12 text-[#8B0000] mb-4" />
+            <p className="text-gray-500 text-sm">Ketik untuk mencari film atau series</p>
           </div>
         )}
       </div>
