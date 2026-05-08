@@ -1,0 +1,54 @@
+name: EAS Update (OTA Mobile)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    # FIX: Tambah path filter — workflow ini HANYA jalan saat file mobile berubah
+    # Sebelumnya tidak ada filter → jalan di setiap push termasuk update web (penyebab "kebalik")
+    paths:
+      - 'artifacts/xpogo-mobile/**'
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: OTA Update ke HP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        working-directory: artifacts/xpogo-mobile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Push OTA Update
+        working-directory: artifacts/xpogo-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_TMDB_KEY: ${{ secrets.VITE_TMDB_KEY }}
+          EXPO_PUBLIC_FIREBASE_SECRET: ${{ secrets.VITE_FIREBASE_SECRET }}
+          EXPO_PUBLIC_WEB_DOMAIN: "apps-tmdb.web.app"
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          eas branch:create main --non-interactive 2>/dev/null || true
+          eas channel:edit preview --branch main --non-interactive
+          eas update --channel preview --message "OTA: $COMMIT_MSG" --non-interactive

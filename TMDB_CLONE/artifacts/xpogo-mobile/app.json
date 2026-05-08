@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Web-film-pro",
+    "slug": "web-film-pro",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "xpogo",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/63d9fe00-0ad5-47b3-9051-33feca0bfa59"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.xpogo.streaming",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera access not required.",
+        "NSMicrophoneUsageDescription": "Microphone access not required."
+      }
+    },
+    "android": {
+      "package": "com.xpogo.streaming",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0d1117"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-updates",
+      "expo-screen-orientation"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "63d9fe00-0ad5-47b3-9051-33feca0bfa59"
+      }
+    },
+    "owner": "pendi28"
+  }
+}

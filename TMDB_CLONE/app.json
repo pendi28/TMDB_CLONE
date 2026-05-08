@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "63d9fe00-0ad5-47b3-9051-33feca0bfa59"
+      }
+    },
+    "android": {
+      "package": "com.pendi28/web-film-pro"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+name: Deploy Web ke Firebase Hosting
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'artifacts/xpogo/**'
+      - '.github/workflows/firebase-deploy.yml'
+
+jobs:
+  deploy:
+    name: Build & Deploy Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        # FIX: --no-frozen-lockfile agar tidak gagal saat lockfile tidak sinkron dengan xpogo-mobile
+        # --filter @workspace/xpogo... hanya install deps untuk web saja, bukan seluruh workspace
+        run: pnpm install --no-frozen-lockfile --filter @workspace/xpogo...
+
+      - name: Build web app
+        run: PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/xpogo run build
+        env:
+          VITE_TMDB_KEY: ${{ secrets.VITE_TMDB_KEY }}
+          VITE_FIREBASE_SECRET: ${{ secrets.VITE_FIREBASE_SECRET }}
+
+      - name: Deploy ke Firebase Hosting
+        run: pnpm --filter @workspace/xpogo run deploy
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
