@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { Star, Clock, Calendar, Play, ChevronLeft, Server, Heart } from "lucide-react";
+import { Star, Clock, Calendar, Play, ChevronLeft, Heart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
@@ -11,11 +11,12 @@ import { usePeachifyPostMessage, getSavedStartAt } from "@/hooks/usePlayerProgre
 const IMG_BASE = "https://image.tmdb.org/t/p";
 
 const BUILTIN_LIST = [
+  { id: "vidplus",   name: "🎬 VidPlus",    url: "vidplus" },
   { id: "peachify",  name: "🍑 Peachify VIP", url: "peachify" },
-  { id: "myvercel",  name: "Server Utama",      url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}" },
-  { id: "vidsrc",    name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
-  { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
+  { id: "myvercel",  name: "Server Utama",    url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
+  { id: "vidking",   name: "ZxcStream",       url: "https://zxcstream.xyz/player/movie/{id}" },
+  { id: "vidsrc",    name: "VidSrc",          url: "https://vidsrc.to/embed/{type}/{id}" },
+  { id: "vidsrcxyz", name: "VidSrc.xyz",      url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
 
 function StarRating({ score }: { score?: number }) {
@@ -24,7 +25,11 @@ function StarRating({ score }: { score?: number }) {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} className="w-4 h-4" fill={i <= stars ? "#f5c518" : "none"} stroke={i <= stars ? "#f5c518" : "#555"} strokeWidth={1.5} />
+        <Star key={i} className="w-4 h-4"
+          fill={i <= stars ? "#f5c518" : "none"}
+          stroke={i <= stars ? "#f5c518" : "#555"}
+          strokeWidth={1.5}
+        />
       ))}
       <span className="text-[#f5c518] text-sm font-bold ml-1">{val.toFixed(1)}</span>
     </div>
@@ -35,10 +40,9 @@ export default function MoviePage() {
   const { id } = useParams<{ id: string }>();
   const movieId = Number(id);
   const [showPlayer, setShowPlayer] = useState(false);
-  const [activeServerId, setActiveServerId] = useState<string>("peachify");
+  const [activeServerId, setActiveServerId] = useState<string>("vidplus");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPeachify = activeServerId === "peachify";
-
   usePeachifyPostMessage(isPeachify && showPlayer);
 
   const { data: movie, isLoading } = useQuery<TmdbMovie>({
@@ -71,6 +75,11 @@ export default function MoviePage() {
   }
 
   const getFinalPlayerUrl = () => {
+    // VidPlus
+    if (activeServerId === "vidplus") {
+      return `https://player.vidplus.to/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&icons=netflix`;
+    }
+    // Peachify
     if (activeServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(movieId);
@@ -82,14 +91,12 @@ export default function MoviePage() {
     const custom = customServers.find((s) => s.id === activeServerId);
     let template = builtin ? builtin.url : custom?.url;
     if (!template) return "";
-    template = template
-      .replace("{type}", "movie")
-      .replace("{id}", String(movieId));
-    return template;
+    return template.replace("{type}", "movie").replace("{id}", String(movieId));
   };
 
   const enabledBuiltins = BUILTIN_LIST.filter(
-    (b) => b.id === "peachify" || (builtinStates as BuiltinServerState)?.[b.id] !== false
+    (b) => b.id === "vidplus" || b.id === "peachify" ||
+           (builtinStates as BuiltinServerState)?.[b.id] !== false
   );
   const activeCustom = (customServers as CustomServer[]).filter((s) => s.active);
   const allServers = [...enabledBuiltins, ...activeCustom];
@@ -105,13 +112,12 @@ export default function MoviePage() {
       {/* Backdrop */}
       {movie.backdrop_path && (
         <div className="relative h-56 sm:h-72 overflow-hidden">
-          <img src={`${IMG_BASE}/original${movie.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-25" />
+          <img src={`${IMG_BASE}/original${movie.backdrop_path}`} alt=""
+            className="w-full h-full object-cover opacity-25" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d0000]" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000]/70 to-transparent" />
-          {/* Back button */}
           <Link href="/" className="absolute top-4 left-4 flex items-center gap-1 bg-black/60 hover:bg-[#8B0000] text-white text-sm font-bold px-3 py-1.5 rounded border border-[#8B0000]/50 transition-colors">
-            <ChevronLeft className="w-4 h-4" />
-            Back
+            <ChevronLeft className="w-4 h-4" /> Back
           </Link>
         </div>
       )}
@@ -123,7 +129,8 @@ export default function MoviePage() {
           <div className="flex-shrink-0 mx-auto sm:mx-0">
             <div className="w-36 sm:w-44 rounded-lg overflow-hidden border border-[#8B0000]/50 shadow-[0_0_20px_rgba(139,0,0,0.4)]">
               {movie.poster_path ? (
-                <img src={`${IMG_BASE}/w500${movie.poster_path}`} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+                <img src={`${IMG_BASE}/w500${movie.poster_path}`} alt={movie.title}
+                  className="w-full aspect-[2/3] object-cover" />
               ) : (
                 <div className="w-full aspect-[2/3] bg-[#1a0000] flex items-center justify-center">
                   <span className="text-4xl">🎬</span>
@@ -136,7 +143,6 @@ export default function MoviePage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-white text-2xl sm:text-3xl font-black mb-2 leading-tight">{movie.title}</h1>
 
-            {/* Meta badges */}
             <div className="flex flex-wrap gap-2 mb-3">
               {year && (
                 <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded flex items-center gap-1">
@@ -153,13 +159,11 @@ export default function MoviePage() {
               )}
             </div>
 
-            {/* Rating */}
             <div className="mb-4">
               <StarRating score={movie.vote_average} />
               <p className="text-gray-600 text-xs mt-0.5">{movie.vote_count?.toLocaleString()} votes</p>
             </div>
 
-            {/* Director */}
             {director && (
               <p className="text-gray-400 text-sm mb-3">
                 <span className="text-gray-600 uppercase tracking-wider text-xs">Sutradara: </span>
@@ -167,12 +171,10 @@ export default function MoviePage() {
               </p>
             )}
 
-            {/* Overview */}
             {movie.overview && (
               <p className="text-gray-400 text-sm leading-relaxed mb-5 line-clamp-3">{movie.overview}</p>
             )}
 
-            {/* Action buttons */}
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setShowPlayer(!showPlayer)}
@@ -189,31 +191,29 @@ export default function MoviePage() {
           </div>
         </div>
 
-        {/* ── Player Section ───────────────────────────────── */}
+        {/* Player */}
         {showPlayer && (
           <div className="mt-8">
-            {/* Server selector */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              <div className="flex items-center gap-2 mr-2">
-                <Server className="w-4 h-4 text-[#E50914]" />
-                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Server</span>
-              </div>
+            <div className="flex flex-wrap gap-2 mb-3 items-center">
+              <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider mr-1">Server:</span>
               {allServers.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setActiveServerId(s.id)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${
+                  className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors relative ${
                     activeServerId === s.id
-                      ? "bg-[#E50914] border-[#E50914] text-white"
+                      ? "bg-[#E50914] border-[#E50914] text-white shadow-[0_0_10px_rgba(229,9,20,0.3)]"
                       : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914] hover:text-white"
                   }`}
                 >
                   {s.name}
+                  {s.id === "vidplus" && (
+                    <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>
+                  )}
                 </button>
               ))}
             </div>
 
-            {/* iframe */}
             <div className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]" style={{ paddingTop: "56.25%" }}>
               <iframe
                 ref={iframeRef}
@@ -227,14 +227,10 @@ export default function MoviePage() {
           </div>
         )}
 
-        {/* ── Similar Movies ───────────────────────────────── */}
+        {/* Similar */}
         {(movie as any)?.similar?.results?.length > 0 && (
           <div className="mt-10 border-t border-[#8B0000]/20 pt-8">
-            <ContentRow
-              title="Film Serupa"
-              items={(movie as any).similar.results}
-              mediaType="movie"
-            />
+            <ContentRow title="Film Serupa" items={(movie as any).similar.results} mediaType="movie" />
           </div>
         )}
       </div>
