@@ -13,9 +13,11 @@ const IMG_BASE = "https://image.tmdb.org/t/p";
 const BUILTIN_LIST = [
   { id: "vidplus",   name: "🎬 VidPlus",    url: "vidplus" },
   { id: "peachify",  name: "🍑 Peachify VIP", url: "peachify" },
+  { id: "vidzee",    name: "🎭 VidZee",      url: "vidzee" },
+  { id: "vixsrc",    name: "🦊 VixSrc",      url: "vixsrc" },
   { id: "myvercel",  name: "Server Utama",    url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
   { id: "vidking",   name: "ZxcStream",       url: "https://zxcstream.xyz/player/movie/{id}" },
-  { id: "vidsrc",    name: "VidSrc",          url: "https://vidsrc.to/embed/{type}/{id}" },
+  { id: "vidsrc-to", name: "VidSrc",          url: "https://vidsrc.to/embed/{type}/{id}" },
   { id: "vidsrcxyz", name: "VidSrc.xyz",      url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
 
@@ -79,6 +81,14 @@ export default function MoviePage() {
     if (activeServerId === "vidplus") {
       return `https://player.vidplus.to/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&icons=netflix`;
     }
+    // VidZee
+    if (activeServerId === "vidzee") {
+      return `https://player.vidzee.wtf/embed/movie/${movieId}`;
+    }
+    // VixSrc
+    if (activeServerId === "vixsrc") {
+      return `https://vixsrc.to/movie/${movieId}`;
+    }
     // Peachify
     if (activeServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
@@ -94,8 +104,9 @@ export default function MoviePage() {
     return template.replace("{type}", "movie").replace("{id}", String(movieId));
   };
 
+  const alwaysOn = ["vidplus", "peachify", "vidzee", "vixsrc"];
   const enabledBuiltins = BUILTIN_LIST.filter(
-    (b) => b.id === "vidplus" || b.id === "peachify" ||
+    (b) => alwaysOn.includes(b.id) ||
            (builtinStates as BuiltinServerState)?.[b.id] !== false
   );
   const activeCustom = (customServers as CustomServer[]).filter((s) => s.active);
@@ -207,9 +218,9 @@ export default function MoviePage() {
                   }`}
                 >
                   {s.name}
-                  {s.id === "vidplus" && (
-                    <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>
-                  )}
+                  {s.id === "vidplus" && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>}
+                  {s.id === "vidzee" && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vixsrc" && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
             </div>

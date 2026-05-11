@@ -13,9 +13,11 @@ const IMG_BASE = "https://image.tmdb.org/t/p";
 const BUILTIN = [
   { id: "vidplus",    name: "🎬 VidPlus",             url: "vidplus" },
   { id: "peachify",   name: "🍑 Peachify VIP",         url: "peachify" },
+  { id: "vidzee",     name: "🎭 VidZee",               url: "vidzee" },
+  { id: "vixsrc",     name: "🦊 VixSrc",               url: "vixsrc" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)", url: "scraper" },
   { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
-  { id: "vidsrc",     name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
+  { id: "vidsrc-to",  name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
 ];
 
 export default function TvPage() {
@@ -104,6 +106,14 @@ export default function TvPage() {
     if (selectedServerId === "vidplus") {
       return `https://player.vidplus.to/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
     }
+    // VidZee
+    if (selectedServerId === "vidzee") {
+      return `https://player.vidzee.wtf/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
+    }
+    // VixSrc
+    if (selectedServerId === "vixsrc") {
+      return `https://vixsrc.to/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
+    }
     // Peachify
     if (selectedServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
@@ -130,9 +140,10 @@ export default function TvPage() {
       .replace("{e}", String(selectedEpisode));
   };
 
+  const alwaysEnabled = ["vidplus", "vidzee", "vixsrc", "auto-clean"];
   const allServers = [
     ...BUILTIN.filter(
-      (b) => b.id === "auto-clean" || b.id === "vidplus" ||
+      (b) => alwaysEnabled.includes(b.id) ||
              (builtinStates as BuiltinServerState)?.[b.id] !== false
     ),
     ...(customServers as CustomServer[]).filter((s) => s.active),
@@ -224,9 +235,9 @@ export default function TvPage() {
                   }`}
                 >
                   {s.name}
-                  {s.id === "vidplus" && (
-                    <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>
-                  )}
+                  {s.id === "vidplus" && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>}
+                  {s.id === "vidzee" && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vixsrc" && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
             </div>
