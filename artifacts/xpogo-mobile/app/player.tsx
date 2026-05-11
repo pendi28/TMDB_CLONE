@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   View, StyleSheet, TouchableOpacity, Text,
-  StatusBar, ActivityIndicator, Dimensions, ScrollView, BackHandler, Platform,
+  StatusBar, ActivityIndicator, Dimensions, ScrollView,
+  BackHandler, Platform, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import WebView from "react-native-webview";
@@ -10,19 +11,52 @@ import * as ScreenOrientation from "expo-screen-orientation";
 import * as NavigationBar from "expo-navigation-bar";
 import { fb } from "@/lib/firebase";
 
-const BG = "#0d1117";
-const CARD_BG = "#1a2332";
-const GREEN = "#00c853";
+const BG = "#0d0000";
+const CARD_BG = "#1a0000";
+const RED = "#E50914";
 const GRAY = "#8a9bb0";
+const GREEN = "#00c853";
 
-interface EmbedRecord { id: string; title: string; url: string; type: string; active: boolean; tmdbId?: number; sub?: string; }
-interface ServerItem { id: string; label: string; url: string; badge: string; badgeColor: string; icon: string; sub?: string; }
+const CONSUMET_BASE = "https://api-consumet-org-three.vercel.app/anime/gogoanime";
+
+interface EmbedRecord {
+  id: string; title: string; url: string;
+  type: string; active: boolean; tmdbId?: number; sub?: string;
+}
+interface ServerItem {
+  id: string; label: string; url: string;
+  badge: string; badgeColor: string; icon: string; sub?: string;
+}
 
 function buildZxcMovieUrl(id: number, serverNum: number) {
-  return `https://zxcstream.xyz/player/movie/${id}?server=${serverNum}&color=00c853&autoplay=true&back=true`;
+  return `https://zxcstream.xyz/player/movie/${id}?server=${serverNum}&color=E50914&autoplay=true&back=true`;
 }
 function buildZxcTvUrl(id: number, serverNum: number, season: number, episode: number) {
-  return `https://zxcstream.xyz/player/tv/${id}?server=${serverNum}&color=00c853&autoplay=true&back=true&season=${season}&episode=${episode}`;
+  return `https://zxcstream.xyz/player/tv/${id}?server=${serverNum}&color=E50914&autoplay=true&back=true&season=${season}&episode=${episode}`;
+}
+function buildPeachifyUrl(tmdbId: number, mediaType: string, season: number, episode: number) {
+  if (mediaType === "movie") {
+    return `https://peachify.top/embed/movie/${tmdbId}?accent=E50914`;
+  }
+  return `https://peachify.top/embed/tv/${tmdbId}/${season}/${episode}?accent=E50914&autoNext=1`;
+}
+function buildVidPlusMovieUrl(tmdbId: number) {
+  return `https://player.vidplus.to/embed/movie/${tmdbId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
+}
+function buildVidPlusTvUrl(tmdbId: number, season: number, episode: number) {
+  return `https://player.vidplus.to/embed/tv/${tmdbId}/${season}/${episode}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
+}
+function buildVidZeeMovieUrl(tmdbId: number) {
+  return `https://player.vidzee.wtf/embed/movie/${tmdbId}`;
+}
+function buildVidZeeTvUrl(tmdbId: number, season: number, episode: number) {
+  return `https://player.vidzee.wtf/embed/tv/${tmdbId}/${season}/${episode}`;
+}
+function buildVixSrcMovieUrl(tmdbId: number) {
+  return `https://vixsrc.to/movie/${tmdbId}`;
+}
+function buildVixSrcTvUrl(tmdbId: number, season: number, episode: number) {
+  return `https://vixsrc.to/tv/${tmdbId}/${season}/${episode}`;
 }
 
 async function setImmersive(on: boolean) {
@@ -33,29 +67,63 @@ async function setImmersive(on: boolean) {
   } catch {}
 }
 
+// ── Auto Scraper via Consumet ────────────────────────────────────────
+async function scrapeM3u8(originalName: string, episode: number): Promise<string | null> {
+  try {
+    // Cari judul di GogoAnime
+    const searchRes = await fetch(`${CONSUMET_BASE}/${encodeURIComponent(originalName)}`);
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const results = searchData?.results ?? [];
+    if (!results.length) return null;
+
+    // Ambil hasil teratas
+    const animeId = results[0]?.id;
+    if (!animeId) return null;
+
+    // Fetch link streaming episode
+    const epRes = await fetch(`${CONSUMET_BASE}/watch/${animeId}-episode-${episode}`);
+    if (!epRes.ok) return null;
+    const epData = await epRes.json();
+
+    // Ambil link m3u8 (prioritas default)
+    const sources = epData?.sources ?? [];
+    const defaultSrc = sources.find((s: any) => s.quality === "default" || s.isM3U8) ?? sources[0];
+    if (defaultSrc?.url) return defaultSrc.url as string;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function PlayerScreen() {
-  const params = useLocalSearchParams<{ url: string; title?: string; tmdbId?: string; mediaType?: string; season?: string; episode?: string; }>();
+  const params = useLocalSearchParams<{
+    url: string; title?: string; tmdbId?: string;
+    mediaType?: string; season?: string; episode?: string;
+    originalName?: string; totalEpisodes?: string;
+  }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [activeUrl, setActiveUrl] = useState(params.url ? decodeURIComponent(params.url) : "");
-  const [loading, setLoading] = useState(true);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [screenSize, setScreenSize] = useState(Dimensions.get("window"));
-  const [servers, setServers] = useState<ServerItem[]>([]);
-  const [loadingServers, setLoadingServers] = useState(false);
+  const tmdbId      = params.tmdbId ? Number(params.tmdbId) : null;
+  const mediaType   = params.mediaType ?? "movie";
+  const title       = params.title ? decodeURIComponent(params.title) : "";
+  const originalName = params.originalName ? decodeURIComponent(params.originalName) : title;
+  const totalEp     = params.totalEpisodes ? Number(params.totalEpisodes) : null;
 
-  const tmdbId = params.tmdbId ? Number(params.tmdbId) : null;
-  const mediaType = params.mediaType ?? "movie";
-  const season = params.season ? Number(params.season) : 1;
-  const episode = params.episode ? Number(params.episode) : 1;
-  const title = params.title ? decodeURIComponent(params.title) : "";
+  const [season, setSeason]   = useState(params.season ? Number(params.season) : 1);
+  const [episode, setEpisode] = useState(params.episode ? Number(params.episode) : 1);
 
-  useEffect(() => {
-    const sub = Dimensions.addEventListener("change", ({ window }) => setScreenSize(window));
-    return () => sub?.remove();
-  }, []);
+  const [activeUrl, setActiveUrl]         = useState(params.url ? decodeURIComponent(params.url) : "");
+  const [loading, setLoading]             = useState(true);
+  const [fullscreen, setFullscreen]       = useState(false);
+  const [screenSize, setScreenSize]       = useState(Dimensions.get("window"));
+  const [servers, setServers]             = useState<ServerItem[]>([]);
+  const [activeServerId, setActiveServerId] = useState<string>("");
+  const [scraping, setScraping]           = useState(false);
+  const [scrapeStatus, setScrapeStatus]   = useState<string>("");
 
+  // ── Fullscreen helpers ────────────────────────────────────────
   const enterFullscreen = useCallback(async () => {
     await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     await setImmersive(true);
@@ -69,11 +137,16 @@ export default function PlayerScreen() {
   }, []);
 
   useEffect(() => {
-    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+    const sub = Dimensions.addEventListener("change", ({ window }) => setScreenSize(window));
+    return () => sub?.remove();
+  }, []);
+
+  useEffect(() => {
+    const h = BackHandler.addEventListener("hardwareBackPress", () => {
       if (fullscreen) { exitFullscreen(); return true; }
       return false;
     });
-    return () => handler.remove();
+    return () => h.remove();
   }, [fullscreen, exitFullscreen]);
 
   useEffect(() => {
@@ -83,192 +156,345 @@ export default function PlayerScreen() {
     };
   }, []);
 
-  // Handler untuk menerima data progres dari Peachify
-  const handlePeachifyMessage = (event: any) => {
-    try {
-      const msgData = JSON.parse(event.nativeEvent.data);
-      if (msgData.type === 'MEDIA_DATA') {
-        // Simpan ke storage atau log
-        console.log("[Peachify Progress Sync]:", msgData.data);
-      }
-      if (msgData.type === 'PLAYER_EVENT') {
-        console.log("[Peachify Event]:", msgData.data.event);
-      }
-    } catch (e) {
-      // Bukan pesan JSON valid atau bukan dari Peachify
-    }
-  };
-
+  // ── Build server list ────────────────────────────────────────
   const buildServers = useCallback((embeds: EmbedRecord[]): ServerItem[] => {
     const list: ServerItem[] = [];
     if (!tmdbId) return list;
 
-    // --- INTEGRASI SERVER PEACHIFY ---
-    const peachifyBase = "https://peachify.top";
-    const peachifyUrl = mediaType === "movie"
-      ? `${peachifyBase}/embed/movie/${tmdbId}?accent=00c853`
-      : `${peachifyBase}/embed/tv/${tmdbId}/${season}/${episode}?accent=00c853&autoNext=1`;
-    
-    list.push({ 
-        id: "peachify_vip", 
-        label: "Server VIP (Fast)", 
-        url: peachifyUrl, 
-        badge: "VIP", 
-        badgeColor: "#ff4757", 
-        icon: "🍑" 
+    // 1. VidPlus (server baru)
+    list.push({
+      id: "vidplus",
+      label: "VidPlus Premium",
+      url: mediaType === "movie"
+        ? buildVidPlusMovieUrl(tmdbId)
+        : buildVidPlusTvUrl(tmdbId, season, episode),
+      badge: "NEW",
+      badgeColor: "#6C63FF",
+      icon: "🎬",
     });
 
+    // 2. VidZee
+    list.push({
+      id: "vidzee",
+      label: "VidZee",
+      url: mediaType === "movie"
+        ? buildVidZeeMovieUrl(tmdbId)
+        : buildVidZeeTvUrl(tmdbId, season, episode),
+      badge: "HD",
+      badgeColor: "#FF6B35",
+      icon: "🎭",
+    });
+
+    // 3. VixSrc
+    list.push({
+      id: "vixsrc",
+      label: "VixSrc",
+      url: mediaType === "movie"
+        ? buildVixSrcMovieUrl(tmdbId)
+        : buildVixSrcTvUrl(tmdbId, season, episode),
+      badge: "ALT",
+      badgeColor: "#059669",
+      icon: "🦊",
+    });
+
+    // 4. Peachify VIP
+    list.push({
+      id: "peachify",
+      label: "Peachify VIP (Fast)",
+      url: buildPeachifyUrl(tmdbId, mediaType, season, episode),
+      badge: "VIP",
+      badgeColor: "#ff4757",
+      icon: "🍑",
+    });
+
+    // 3. Auto Scraper (Consumet)
+    list.push({
+      id: "scraper",
+      label: "🚀 Auto Scraper (Clean)",
+      url: "__scraper__",
+      badge: "M3U8",
+      badgeColor: GREEN,
+      icon: "🚀",
+      sub: `Cari: ${originalName} ep.${episode}`,
+    });
+
+    // 4. ZxcStream servers
     if (mediaType === "movie") {
       list.push(
-        { id: "s1", label: "Server 1 — Utama", url: buildZxcMovieUrl(tmdbId, 1), badge: "HD", badgeColor: GREEN, icon: "🖥️" },
-        { id: "s2", label: "Server 2", url: buildZxcMovieUrl(tmdbId, 2), badge: "HD", badgeColor: "#3b82f6", icon: "🖥️" },
-        { id: "s3", label: "Server 3", url: buildZxcMovieUrl(tmdbId, 3), badge: "ALT", badgeColor: "#8b5cf6", icon: "🖥️" },
+        { id: "zxc1", label: "ZxcStream Server 1", url: buildZxcMovieUrl(tmdbId, 1), badge: "HD", badgeColor: RED, icon: "🖥️" },
+        { id: "zxc2", label: "ZxcStream Server 2", url: buildZxcMovieUrl(tmdbId, 2), badge: "HD", badgeColor: "#3b82f6", icon: "🖥️" },
+        { id: "zxc3", label: "ZxcStream Server 3", url: buildZxcMovieUrl(tmdbId, 3), badge: "ALT", badgeColor: "#8b5cf6", icon: "🖥️" },
       );
     } else {
       list.push(
-        { id: "s1", label: "Server 1 — Utama", url: buildZxcTvUrl(tmdbId, 1, season, episode), badge: "HD", badgeColor: GREEN, icon: "🖥️" },
-        { id: "s2", label: "Server 2", url: buildZxcTvUrl(tmdbId, 2, season, episode), badge: "HD", badgeColor: "#3b82f6", icon: "🖥️" },
-        { id: "s3", label: "Server 3", url: buildZxcTvUrl(tmdbId, 3, season, episode), badge: "ALT", badgeColor: "#8b5cf6", icon: "🖥️" },
+        { id: "zxc1", label: "ZxcStream Server 1", url: buildZxcTvUrl(tmdbId, 1, season, episode), badge: "HD", badgeColor: RED, icon: "🖥️" },
+        { id: "zxc2", label: "ZxcStream Server 2", url: buildZxcTvUrl(tmdbId, 2, season, episode), badge: "HD", badgeColor: "#3b82f6", icon: "🖥️" },
+        { id: "zxc3", label: "ZxcStream Server 3", url: buildZxcTvUrl(tmdbId, 3, season, episode), badge: "ALT", badgeColor: "#8b5cf6", icon: "🖥️" },
       );
     }
-    embeds.forEach((e, i) => list.push({ id: e.id, label: e.title || `Embed ${i + 1}`, url: e.url, badge: "EMBED", badgeColor: "#f59e0b", icon: "📡", sub: e.sub ? `Sub: ${e.sub}` : undefined }));
-    return list;
-  }, [tmdbId, mediaType, season, episode]);
 
+    // 4. Custom embeds dari Firebase
+    embeds.forEach((e, i) =>
+      list.push({
+        id: e.id, label: e.title || `Embed ${i + 1}`,
+        url: e.url, badge: "EMBED", badgeColor: "#f59e0b", icon: "📡",
+        sub: e.sub ? `Sub: ${e.sub}` : undefined,
+      })
+    );
+
+    return list;
+  }, [tmdbId, mediaType, season, episode, originalName]);
+
+  // ── Load embeds & set default server ────────────────────────
   useEffect(() => {
     if (!tmdbId) return;
-    setLoadingServers(true);
     fb.getEmbeds()
       .then((list: any[]) => {
-        const matched = list.filter(e => e.active && e.tmdbId === tmdbId && (mediaType === "movie" ? e.type === "movie" : e.type === "series"));
+        const matched = list.filter(e =>
+          e.active && e.tmdbId === tmdbId &&
+          (mediaType === "movie" ? e.type === "movie" : e.type === "series")
+        );
         const allServers = buildServers(matched);
         setServers(allServers);
-        
-        // Set Peachify sebagai URL default jika belum ada URL aktif dari params
-        if (!activeUrl && allServers.length > 0) {
-            setActiveUrl(allServers[0].url);
+        // Default ke Peachify
+        const first = allServers[0];
+        if (first && !activeUrl) {
+          setActiveServerId(first.id);
+          setActiveUrl(first.url);
+        } else if (first) {
+          setActiveServerId(first.id);
         }
       })
-      .catch(() => setServers(buildServers([])))
-      .finally(() => setLoadingServers(false));
-  }, [tmdbId, mediaType, season, episode, buildServers]);
+      .catch(() => {
+        const allServers = buildServers([]);
+        setServers(allServers);
+        if (allServers[0]) {
+          setActiveServerId(allServers[0].id);
+          setActiveUrl(allServers[0].url);
+        }
+      });
+  }, [tmdbId, season, episode]);
 
-  if (fullscreen) {
-    const fsW = Math.max(screenSize.width, screenSize.height);
-    const fsH = Math.min(screenSize.width, screenSize.height);
-    return (
-      <View style={{ flex: 1, width: fsW, height: fsH, backgroundColor: "#000" }}>
-        <StatusBar hidden translucent />
-        <WebView
-          key={activeUrl + "_fs"}
-          source={{ uri: activeUrl }}
-          style={{ flex: 1, backgroundColor: "#000" }}
-          allowsFullscreenVideo
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          javaScriptEnabled
-          domStorageEnabled
-          originWhitelist={["*"]}
-          scrollEnabled={false}
-          onMessage={handlePeachifyMessage}
-        />
-        <TouchableOpacity style={S.exitFsBtn} onPress={exitFullscreen} activeOpacity={0.8}>
-          <Text style={S.exitFsText}>⤡ Keluar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  // ── Pilih server ────────────────────────────────────────────
+  const selectServer = async (srv: ServerItem) => {
+    setActiveServerId(srv.id);
+    if (srv.id !== "scraper") {
+      setActiveUrl(srv.url);
+      return;
+    }
 
-  const PLAYER_H = screenSize.width * (9 / 16);
+    // Auto Scraper logic
+    setScraping(true);
+    setScrapeStatus("Mencari stream .m3u8...");
+    try {
+      const m3u8 = await scrapeM3u8(originalName, episode);
+      if (m3u8) {
+        setScrapeStatus("Link ditemukan!");
+        setActiveUrl(m3u8);
+      } else {
+        // Fallback ke ZxcStream
+        setScrapeStatus("Tidak ditemukan, beralih ke ZxcStream...");
+        const fallback = servers.find(s => s.id === "zxc1");
+        if (fallback) {
+          setActiveServerId("zxc1");
+          setActiveUrl(fallback.url);
+        }
+        Alert.alert(
+          "Auto Scraper",
+          `Tidak ada hasil untuk "${originalName}". Beralih ke ZxcStream secara otomatis.`,
+          [{ text: "OK" }]
+        );
+      }
+    } catch {
+      const fallback = servers.find(s => s.id === "zxc1");
+      if (fallback) { setActiveServerId("zxc1"); setActiveUrl(fallback.url); }
+    } finally {
+      setScraping(false);
+      setTimeout(() => setScrapeStatus(""), 3000);
+    }
+  };
 
-  if (!activeUrl) {
-    return (
-      <View style={[S.container, { paddingTop: insets.top }]}>
-        <TouchableOpacity style={S.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
-          <Text style={S.backText}>✕ Kembali</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={GREEN} />
-          <Text style={{ color: GRAY, fontSize: 14, marginTop: 10 }}>Memuat Player...</Text>
-        </View>
-      </View>
-    );
-  }
+  // ── Episode navigation ───────────────────────────────────────
+  const goEpisode = (ep: number) => {
+    if (ep < 1) return;
+    if (totalEp && ep > totalEp) return;
+    setEpisode(ep);
+    setLoading(true);
+  };
+
+  // Re-build URL when episode/season changes
+  useEffect(() => {
+    if (!tmdbId || servers.length === 0) return;
+    const current = servers.find(s => s.id === activeServerId);
+    if (!current || current.id === "scraper") return;
+
+    if (mediaType !== "movie") {
+      if (activeServerId.startsWith("zxc")) {
+        const num = Number(activeServerId.replace("zxc", ""));
+        setActiveUrl(buildZxcTvUrl(tmdbId, num, season, episode));
+      } else if (activeServerId === "peachify") {
+        setActiveUrl(buildPeachifyUrl(tmdbId, mediaType, season, episode));
+      }
+    }
+  }, [season, episode]);
+
+  const videoH = fullscreen ? screenSize.height : screenSize.width * (9 / 16);
 
   return (
-    <View style={[S.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} translucent={false} />
-      <View style={S.topBar}>
-        <TouchableOpacity style={S.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
-          <Text style={S.backText}>‹ Kembali</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={S.fsBtn} onPress={enterFullscreen} activeOpacity={0.8}>
-          <Text style={S.fsBtnText}>⛶ Layar Penuh</Text>
+    <View style={[S.root, fullscreen && { backgroundColor: "#000" }]}>
+      <StatusBar hidden={fullscreen} barStyle="light-content" backgroundColor={BG} />
+
+      {/* Video Player */}
+      <View style={[S.playerBox, { height: videoH }]}>
+        {scraping ? (
+          <View style={S.scrapeOverlay}>
+            <ActivityIndicator color={GREEN} size="large" />
+            <Text style={S.scrapeText}>{scrapeStatus}</Text>
+          </View>
+        ) : activeUrl ? (
+          <WebView
+            source={{ uri: activeUrl }}
+            style={{ flex: 1, backgroundColor: "#000" }}
+            onLoadStart={() => setLoading(true)}
+            onLoadEnd={() => setLoading(false)}
+            allowsFullscreenVideo
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback
+            userAgent="Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+          />
+        ) : (
+          <View style={S.noUrlBox}>
+            <Text style={{ color: GRAY }}>Pilih server di bawah</Text>
+          </View>
+        )}
+        {loading && !scraping && (
+          <View style={S.loadingOverlay}>
+            <ActivityIndicator color={RED} size="large" />
+          </View>
+        )}
+
+        {/* Fullscreen toggle */}
+        <TouchableOpacity
+          style={[S.fsBtn, { top: fullscreen ? 20 : 8 }]}
+          onPress={fullscreen ? exitFullscreen : enterFullscreen}
+          activeOpacity={0.8}>
+          <Text style={{ color: "#fff", fontSize: 16 }}>{fullscreen ? "⊠" : "⛶"}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={{ height: PLAYER_H, backgroundColor: "#000" }}>
-        <WebView 
-          key={activeUrl} 
-          source={{ uri: activeUrl }} 
-          style={{ flex: 1, backgroundColor: "#000" }}
-          allowsFullscreenVideo 
-          allowsInlineMediaPlayback 
-          mediaPlaybackRequiresUserAction={false}
-          javaScriptEnabled 
-          domStorageEnabled 
-          originWhitelist={["*"]}
-          onLoadStart={() => setLoading(true)} 
-          onLoadEnd={() => setLoading(false)}
-          onMessage={handlePeachifyMessage}
-        />
-        {loading && <ActivityIndicator color={GREEN} size="large" style={StyleSheet.absoluteFill} />}
-      </View>
+      {!fullscreen && (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          {/* Judul */}
+          <View style={S.titleRow}>
+            <TouchableOpacity onPress={() => router.back()} style={S.backBtn} activeOpacity={0.8}>
+              <Text style={S.backText}>‹</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={S.titleText} numberOfLines={2}>{title}</Text>
+              {mediaType !== "movie" && (
+                <Text style={S.epLabel}>S{season} · Episode {episode}</Text>
+              )}
+            </View>
+          </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {title ? <Text style={S.titleText} numberOfLines={2}>{title}</Text> : null}
+          {scrapeStatus ? (
+            <View style={S.scrapeStatusBar}>
+              <Text style={S.scrapeStatusText}>{scrapeStatus}</Text>
+            </View>
+          ) : null}
 
-        {loadingServers
-          ? <ActivityIndicator color={GREEN} style={{ marginTop: 16 }} />
-          : servers.length > 1
-            ? <>
-                <Text style={S.sectionLabel}>🖥️ Ganti Server</Text>
-                {servers.map((sv, i) => (
-                  <TouchableOpacity key={sv.id} style={[S.serverRow, activeUrl === sv.url && S.serverRowActive]}
-                    onPress={() => setActiveUrl(sv.url)} activeOpacity={0.8}>
-                    <View style={[S.serverIcon, { backgroundColor: sv.id === "peachify_vip" ? "#3d0a16" : (i === 0 ? "#0a3d1f" : CARD_BG) }]}>
-                      <Text style={{ fontSize: 16 }}>{sv.icon}</Text>
-                    </View>
-                    <Text style={S.serverLabel}>{sv.label}</Text>
-                    <View style={[S.badge, { backgroundColor: sv.badgeColor + "22", borderColor: sv.badgeColor }]}>
-                      <Text style={[S.badgeText, { color: sv.badgeColor }]}>{sv.badge}</Text>
-                    </View>
-                    {activeUrl === sv.url && <Text style={{ color: GREEN, fontSize: 12, fontWeight: "700" }}>▶ Aktif</Text>}
-                  </TouchableOpacity>
-                ))}
-              </>
-            : null
-        }
-      </ScrollView>
+          {/* Episode navigation */}
+          {mediaType !== "movie" && (
+            <View style={S.epNav}>
+              <TouchableOpacity
+                style={[S.epNavBtn, episode <= 1 && S.epNavBtnDisabled]}
+                onPress={() => goEpisode(episode - 1)}
+                disabled={episode <= 1}
+                activeOpacity={0.8}>
+                <Text style={S.epNavText}>‹ Ep. Sebelumnya</Text>
+              </TouchableOpacity>
+              <View style={S.epCurrent}>
+                <Text style={S.epCurrentText}>Ep. {episode}</Text>
+              </View>
+              <TouchableOpacity
+                style={[S.epNavBtn, (totalEp !== null && episode >= totalEp) && S.epNavBtnDisabled]}
+                onPress={() => goEpisode(episode + 1)}
+                disabled={totalEp !== null && episode >= totalEp}
+                activeOpacity={0.8}>
+                <Text style={S.epNavText}>Ep. Selanjutnya ›</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Server List */}
+          <Text style={S.serverLabel}>PILIH SERVER</Text>
+          {servers.map((srv, i) => (
+            <TouchableOpacity key={srv.id}
+              style={[S.serverRow, activeServerId === srv.id && S.serverRowActive]}
+              onPress={() => selectServer(srv)}
+              activeOpacity={0.8}>
+              <View style={[S.serverIconBox, activeServerId === srv.id && { backgroundColor: "#2a0000" }]}>
+                <Text style={{ fontSize: 20 }}>{srv.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[S.serverName, activeServerId === srv.id && { color: "#fff" }]}>
+                  {srv.label}
+                </Text>
+                {srv.sub ? <Text style={S.serverSub} numberOfLines={1}>{srv.sub}</Text> : null}
+              </View>
+              <View style={[S.badge, { backgroundColor: srv.badgeColor + "22", borderColor: srv.badgeColor }]}>
+                <Text style={[S.badgeText, { color: srv.badgeColor }]}>{srv.badge}</Text>
+              </View>
+              {activeServerId === srv.id && (
+                <View style={S.activeDot} />
+              )}
+            </TouchableOpacity>
+          ))}
+
+          {/* Tip */}
+          <View style={S.tipBox}>
+            <Text style={S.tipText}>
+              💡 Jika video blank, coba server lain. Auto Scraper otomatis fallback ke ZxcStream jika gagal.
+            </Text>
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10 },
-  backBtn: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  backText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  fsBtn: { backgroundColor: "#1a2332", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  fsBtnText: { color: GREEN, fontSize: 13, fontWeight: "700" },
-  exitFsBtn: { position: "absolute", top: 20, right: 16, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
-  exitFsText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  titleText: { color: "#fff", fontSize: 16, fontWeight: "800", marginBottom: 16, lineHeight: 22 },
-  sectionLabel: { color: "#c8d6e5", fontSize: 14, fontWeight: "700", marginBottom: 10 },
-  serverRow: { flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: 12, padding: 12, marginBottom: 8, gap: 10, borderWidth: 1.5, borderColor: "transparent" },
-  serverRowActive: { borderColor: GREEN },
-  serverIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  serverLabel: { flex: 1, color: "#fff", fontSize: 14, fontWeight: "600" },
-  badge: { borderRadius: 8, borderWidth: 1.5, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
+  root:            { flex: 1, backgroundColor: BG },
+  playerBox:       { backgroundColor: "#000", position: "relative" },
+  loadingOverlay:  { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+  scrapeOverlay:   { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000", gap: 16 },
+  scrapeText:      { color: GREEN, fontSize: 14, fontWeight: "600" },
+  noUrlBox:        { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000" },
+  fsBtn:           { position: "absolute", right: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  titleRow:        { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  backBtn:         { width: 36, height: 36, borderRadius: 18, backgroundColor: CARD_BG, alignItems: "center", justifyContent: "center" },
+  backText:        { color: "#fff", fontSize: 22, fontWeight: "700", lineHeight: 28 },
+  titleText:       { color: "#fff", fontSize: 16, fontWeight: "800" },
+  epLabel:         { color: RED, fontSize: 12, fontWeight: "700", marginTop: 2 },
+  scrapeStatusBar: { backgroundColor: "#0a3d1f", marginHorizontal: 16, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 8 },
+  scrapeStatusText: { color: GREEN, fontSize: 12, fontWeight: "600" },
+  epNav:           { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 16, marginBottom: 16, gap: 8 },
+  epNavBtn:        { flex: 1, backgroundColor: CARD_BG, borderRadius: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: "#3a0000" },
+  epNavBtnDisabled: { opacity: 0.35 },
+  epNavText:       { color: "#fff", fontSize: 13, fontWeight: "700" },
+  epCurrent:       { backgroundColor: RED, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  epCurrentText:   { color: "#fff", fontSize: 13, fontWeight: "800" },
+  serverLabel:     { color: GRAY, fontSize: 11, fontWeight: "700", letterSpacing: 1, paddingHorizontal: 16, marginBottom: 8 },
+  serverRow:       { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 10, backgroundColor: CARD_BG, borderRadius: 12, padding: 14, gap: 12, borderWidth: 1.5, borderColor: "#2a0000" },
+  serverRowActive: { borderColor: RED },
+  serverIconBox:   { width: 44, height: 44, borderRadius: 12, backgroundColor: "#2a0000", alignItems: "center", justifyContent: "center" },
+  serverName:      { color: GRAY, fontSize: 14, fontWeight: "700" },
+  serverSub:       { color: "#555", fontSize: 11, marginTop: 2 },
+  badge:           { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1.5 },
+  badgeText:       { fontSize: 10, fontWeight: "800" },
+  activeDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: RED },
+  tipBox:          { margin: 16, backgroundColor: CARD_BG, borderRadius: 12, padding: 14 },
+  tipText:         { color: GRAY, fontSize: 12, lineHeight: 18 },
 });
