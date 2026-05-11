@@ -23,7 +23,6 @@ export const tmdb = {
   topTv:         (page = 1) => tmdbFetch<any>("/tv/top_rated",   { page }),
   movieDetail:   (id: number) => tmdbFetch<any>(`/movie/${id}`, { append_to_response: "credits,similar,videos" }),
   tvDetail:      (id: number) => tmdbFetch<any>(`/tv/${id}`,    { append_to_response: "credits,similar,seasons,videos" }),
-  // FIX: tambah tvSeason untuk ambil episode lengkap dengan nama, thumbnail, deskripsi
   tvSeason:      (id: number, season: number) => tmdbFetch<any>(`/tv/${id}/season/${season}`),
   search:        (query: string, page = 1) => tmdbFetch<any>("/search/multi", { query, page }),
   find:          (query: string, type: "movie" | "series" = "movie") =>
@@ -32,4 +31,41 @@ export const tmdb = {
     tmdbFetch<any>(`/find/${imdbId}`, { external_source: "imdb_id" }),
   discover:      (type: "movie" | "tv", genreId: number, page = 1) =>
     tmdbFetch<any>(`/discover/${type}`, { with_genres: genreId, page, sort_by: "popularity.desc" }),
+
+  // ── Kategori Khusus ────────────────────────────────────────────────
+  // Donghua: Animasi (genre 16) dari China (bahasa zh)
+  donghua: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "zh",
+      sort_by: "popularity.desc",
+      page,
+    }),
+
+  // Anime: Animasi (genre 16) dari Jepang (bahasa ja)
+  anime: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "ja",
+      sort_by: "popularity.desc",
+      page,
+    }),
+
+  // Drama Korea: Drama (genre 18) dari Korea (bahasa ko)
+  dramaKorea: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 18,
+      with_original_language: "ko",
+      sort_by: "popularity.desc",
+      page,
+    }),
+
+  // Drama China: Drama (genre 18) dari China (bahasa zh)
+  dramaChina: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 18,
+      with_original_language: "zh",
+      sort_by: "popularity.desc",
+      page,
+    }),
 };
