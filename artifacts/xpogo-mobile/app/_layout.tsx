@@ -14,7 +14,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import AdBanner from "@/components/AdBanner";
+import AdBanner, { type Ad } from "@/components/AdBanner";
 import { fb } from "@/lib/firebase";
 
 SplashScreen.preventAutoHideAsync();
@@ -23,17 +23,16 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
-export interface Ad {
-  id: string;
-  type: "banner-top" | "banner-bottom" | "popunder";
-  label: string;
-  code: string;
-  active: boolean;
-}
-
-const BANNER_TOP_H = 80;
+const BANNER_TOP_H    = 80;
 const BANNER_BOTTOM_H = 60;
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 menit
+const REFRESH_INTERVAL = 30 * 1000; // 30 detik — sinkron dengan web admin panel
+
+// Hanya tampilkan iklan yang platform-nya "apk" atau "both"
+// Jika field platform tidak ada (data lama dari mobile admin), tampilkan semua
+function isApkAd(ad: Ad): boolean {
+  if (!ad.platform) return true;
+  return ad.platform === "apk" || ad.platform === "both";
+}
 
 function RootLayoutNav() {
   return (
@@ -64,7 +63,7 @@ export default function RootLayout() {
   // Pertama kali load
   useEffect(() => { fetchAds(); }, [fetchAds]);
 
-  // Auto-refresh setiap 5 menit
+  // Auto-refresh setiap 30 detik — sinkron dengan web admin panel
   useEffect(() => {
     const timer = setInterval(fetchAds, REFRESH_INTERVAL);
     return () => clearInterval(timer);
@@ -87,9 +86,10 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
-  const activeAds = ads.filter(a => a.active);
-  const hasBannerTop = activeAds.some(a => a.type === "banner-top");
-  const hasBannerBottom = activeAds.some(a => a.type === "banner-bottom");
+  // Filter iklan khusus APK untuk menentukan apakah perlu ruang banner
+  const apkAds       = ads.filter(a => a.active && isApkAd(a));
+  const hasBannerTop    = apkAds.some(a => a.type === "banner-top");
+  const hasBannerBottom = apkAds.some(a => a.type === "banner-bottom");
 
   return (
     <SafeAreaProvider>
@@ -103,6 +103,7 @@ export default function RootLayout() {
                   <RootLayoutNav />
                 </View>
                 {hasBannerBottom && <View style={{ height: BANNER_BOTTOM_H, backgroundColor: "#000" }} />}
+                {/* Kirim semua ads ke AdBanner, filter platform dilakukan di dalam komponen */}
                 <AdBanner ads={ads} />
               </SafeAreaView>
             </KeyboardProvider>
