@@ -4,10 +4,13 @@ import WebView from "react-native-webview";
 
 export interface Ad {
   id: string;
-  type: "banner-top" | "banner-bottom" | "popunder";
+  type: "banner-top" | "banner-bottom" | "popunder" | "social-bar" | "native-video" | "interstitial";
   label: string;
   code: string;
   active: boolean;
+  // Platform dari web admin: "web" | "apk" | "both"
+  // Jika tidak ada field ini (data lama), tampilkan di semua platform
+  platform?: "web" | "apk" | "both";
 }
 
 const W = Dimensions.get("window").width;
@@ -15,6 +18,13 @@ const WEB_DOMAIN = "https://apps-tmdb.web.app";
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+
+// Filter iklan yang boleh tampil di APK
+function isApkAd(ad: Ad): boolean {
+  // Jika tidak ada field platform (data lama dari mobile admin), tampilkan semua
+  if (!ad.platform) return true;
+  return ad.platform === "apk" || ad.platform === "both";
+}
 
 function buildHtml(code: string) {
   return `<!DOCTYPE html><html><head>
@@ -95,12 +105,14 @@ function PopunderWebView({ code }: { code: string }) {
 }
 
 export default function AdBanner({ ads }: { ads: Ad[] }) {
-  const active = ads.filter(a => a.active);
-  const bannerTop = active.filter(a => a.type === "banner-top");
-  const bannerBottom = active.filter(a => a.type === "banner-bottom");
-  const popunders = active.filter(a => a.type === "popunder");
+  // Filter: hanya aktif + platform-nya untuk APK
+  const apkAds = ads.filter(a => a.active && isApkAd(a));
 
-  if (!active.length) return null;
+  const bannerTop    = apkAds.filter(a => a.type === "banner-top");
+  const bannerBottom = apkAds.filter(a => a.type === "banner-bottom");
+  const popunders    = apkAds.filter(a => a.type === "popunder");
+
+  if (!apkAds.length) return null;
 
   return (
     <>
@@ -134,7 +146,7 @@ const S = StyleSheet.create({
     backgroundColor: "#000",
     overflow: "hidden",
   },
-  top: { top: 0 },
+  top:    { top: 0 },
   bottom: { bottom: 0 },
   fallback: {
     width: W,
