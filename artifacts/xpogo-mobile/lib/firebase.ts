@@ -74,9 +74,18 @@ export const fb = {
   updateCustomMovie: (id: string, d: unknown) => fbPatch(`custom_movies/${id}`, d),
   deleteCustomMovie: (id: string) => fbDelete(`custom_movies/${id}`),
 
+  // ── Sinkron dengan web admin ────────────────────────────────
+  // Status aktif/nonaktif tiap built-in server dari web admin
+  getBuiltinServerStates: () => fbGet<Record<string, boolean>>("builtin_server_states"),
+
+  // Custom servers tambahan dari web admin
+  getCustomServers: async () => objToArr(await fbGet<Record<string, any>>("custom_servers")),
+
+  // ── TMDB sync ───────────────────────────────────────────────
   getTmdbSyncStatus: () => fbGet<Record<string, unknown>>("tmdb_sync_status"),
   getTmdbSyncItems: async () => objToArr(await fbGet<Record<string, any>>("tmdb_sync")),
 
+  // ── Komentar ────────────────────────────────────────────────
   getComments: async (type: string, tmdbId: number) =>
     objToArr(await fbGet<Record<string, any>>(`comments/${type}_${tmdbId}`)),
   addComment: (type: string, tmdbId: number, d: unknown) =>
