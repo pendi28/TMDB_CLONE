@@ -32,7 +32,7 @@ function buildZxcTvUrl(id: number, serverNum: number, season: number, ep: number
   return `https://zxcstream.xyz/player/tv/${id}?server=${serverNum}&color=E50914&autoplay=true&back=true&season=${season}&episode=${ep}`;
 }
 function buildPeachifyUrl(id: number, season: number, ep: number) {
-  return `https://peachify.top/embed/tv/${id}/${season}/${ep}?accent=E50914&autoNext=1`;
+  return `https://peachify.top/embed/tv/${id}/${season}/${ep}?accent=E50914&autoNext=1&autoplay=1`;
 }
 
 function RatingCircle({ score }: { score?: number }) {
