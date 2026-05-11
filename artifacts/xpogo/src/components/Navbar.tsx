@@ -5,6 +5,7 @@ import { Search, Menu, X, User, ChevronDown, Heart, BookmarkCheck, BookOpen } fr
 const NAV_LINKS = [
   { label: "HOME", href: "/" },
   { label: "MOVIE", href: "/movies" },
+  { label: "DONGHUA", href: "/donghua" },
   { label: "TV SHOW", href: "/tv" },
   { label: "FAVORIT", href: "/search" },
   { label: "COMMUNITY", href: "/people" },
