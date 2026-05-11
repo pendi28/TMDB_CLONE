@@ -29,6 +29,14 @@ export const tmdb = {
   topTv:         (page = 1) => tmdbFetch<TmdbListResult>("/tv/top_rated", { page }),
   airingToday:   (page = 1) => tmdbFetch<TmdbListResult>("/tv/airing_today", { page }),
   onTv:          (page = 1) => tmdbFetch<TmdbListResult>("/tv/on_the_air", { page }),
+  // FITUR DONGHUA (ANICHIN STYLE)
+  donghua:       (page = 1) => 
+    tmdbFetch<TmdbListResult>("/discover/tv", { 
+      page, 
+      with_original_language: "zh", 
+      with_genres: 16, 
+      sort_by: "popularity.desc" 
+    }),
   peoplePopular: (page = 1) => tmdbFetch<TmdbListResult>("/person/popular", { page }),
   movieDetail:   (id: number) =>
     tmdbFetch<TmdbMovie>(`/movie/${id}`, { append_to_response: "credits,similar,videos" }),
