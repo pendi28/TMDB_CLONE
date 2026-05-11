@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { Star, Calendar, Play, ChevronLeft, Server, Heart } from "lucide-react";
+import { Star, Calendar, Play, ChevronLeft, Server, Heart, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
@@ -10,12 +10,13 @@ import { usePeachifyPostMessage, getSavedStartAt } from "@/hooks/usePlayerProgre
 
 const IMG_BASE = "https://image.tmdb.org/t/p";
 
+// DAFTAR SERVER (Sudah ditambah Auto Scraper yang Bersih)
 const BUILTIN = [
-  { id: "peachify",  name: "🍑 Peachify VIP", url: "peachify" },
-  { id: "myvercel",  name: "Server Utama",      url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
-  { id: "vidsrc",    name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
-  { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
+  { id: "peachify",     name: "🍑 Peachify VIP", url: "peachify" },
+  { id: "auto-clean",   name: "🚀 Auto Scraper (Clean)", url: "scraper" },
+  { id: "vidking",      name: "ZxcStream",          url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
+  { id: "vidsrc",       name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
+  { id: "vidsrcxyz",    name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
 
 function StarRating({ score }: { score?: number }) {
@@ -38,6 +39,11 @@ export default function TvPage() {
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [showPlayer, setShowPlayer] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState("peachify");
+  
+  // State khusus Scraper
+  const [scrapedUrl, setScrapedUrl] = useState<string | null>(null);
+  const [isScraping, setIsScraping] = useState(false);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPeachify = selectedServerId === "peachify";
 
@@ -54,6 +60,37 @@ export default function TvPage() {
     queryFn: () => tmdb.tvSeason(tvId, selectedSeason),
     enabled: !!tvId,
   });
+
+  // LOGIKA AUTO SCRAPER (Mencari link .m3u8 bersih)
+  useEffect(() => {
+    if (selectedServerId === "auto-clean" && tv) {
+      const runScraper = async () => {
+        setIsScraping(true);
+        try {
+          // Cari ID Anime (Gunakan Original Name untuk Donghua agar akurat)
+          const searchTitle = tv.original_name || tv.name;
+          const searchRes = await fetch(`https://api.consumet.org/anime/gogoanime/${encodeURIComponent(searchTitle)}`);
+          const searchData = await searchRes.json();
+          
+          if (searchData.results?.length > 0) {
+            const animeId = searchData.results[0].id;
+            const streamRes = await fetch(`https://api.consumet.org/anime/gogoanime/watch/${animeId}-episode-${selectedEpisode}`);
+            const streamData = await streamRes.json();
+            
+            if (streamData.sources) {
+              const bestSource = streamData.sources.find((s: any) => s.quality === 'default' || s.quality === 'auto') || streamData.sources[0];
+              setScrapedUrl(bestSource.url);
+            }
+          }
+        } catch (err) {
+          console.error("Scraper Gagal:", err);
+        } finally {
+          setIsScraping(false);
+        }
+      };
+      runScraper();
+    }
+  }, [selectedServerId, selectedEpisode, tv]);
 
   const { data: builtinStates } = useQuery<BuiltinServerState>({
     queryKey: ["builtin_states"],
@@ -79,6 +116,7 @@ export default function TvPage() {
   }
 
   const getFinalUrl = () => {
+    // 1. Logika Peachify
     if (selectedServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(tvId, selectedSeason, selectedEpisode);
@@ -86,20 +124,26 @@ export default function TvPage() {
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
       return `https://peachify.top/embed/tv/${tvId}?season=${selectedSeason}&episode=${selectedEpisode}&${params}`;
     }
+
+    // 2. Logika Auto Scraper Clean (Menggunakan ArtPlayer Proxy)
+    if (selectedServerId === "auto-clean") {
+      return scrapedUrl ? `https://artplayer.org/?url=${encodeURIComponent(scrapedUrl)}&autoPlay=true` : "";
+    }
+
+    // 3. Logika Built-in & Custom Server lainnya
     const builtin = BUILTIN.find((b) => b.id === selectedServerId);
     const custom = (customServers as CustomServer[]).find((s) => s.id === selectedServerId);
     let template = builtin ? builtin.url : custom?.url;
     if (!template) return "";
-    template = template
+    return template
       .replace("{type}", "tv")
       .replace("{id}", String(tvId))
       .replace("{s}", String(selectedSeason))
       .replace("{e}", String(selectedEpisode));
-    return template;
   };
 
   const enabledBuiltins = BUILTIN.filter(
-    (b) => b.id === "peachify" || (builtinStates as BuiltinServerState)?.[b.id] !== false
+    (b) => b.id === "peachify" || b.id === "auto-clean" || (builtinStates as BuiltinServerState)?.[b.id] !== false
   );
   const activeCustom = (customServers as CustomServer[]).filter((s) => s.active);
   const allServers = [...enabledBuiltins, ...activeCustom];
@@ -110,22 +154,15 @@ export default function TvPage() {
   const episodes = season?.episodes ?? [];
 
   return (
-    <div
-      className="min-h-screen pb-16"
-      style={{
-        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
-        paddingTop: "calc(56px + var(--banner-top-height, 0px))",
-      }}
-    >
+    <div className="min-h-screen pb-16" style={{ background: "linear-gradient(to bottom, #0d0000, #0a0000)", paddingTop: "calc(56px + var(--banner-top-height, 0px))" }}>
+      
       {/* Backdrop */}
       {tv.backdrop_path && (
         <div className="relative h-56 sm:h-72 overflow-hidden">
           <img src={`${IMG_BASE}/original${tv.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-25" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d0000]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000]/70 to-transparent" />
           <Link href="/" className="absolute top-4 left-4 flex items-center gap-1 bg-black/60 hover:bg-[#8B0000] text-white text-sm font-bold px-3 py-1.5 rounded border border-[#8B0000]/50 transition-colors">
-            <ChevronLeft className="w-4 h-4" />
-            Back
+            <ChevronLeft className="w-4 h-4" /> Back
           </Link>
         </div>
       )}
@@ -136,121 +173,54 @@ export default function TvPage() {
           {/* Poster */}
           <div className="flex-shrink-0 mx-auto sm:mx-0">
             <div className="w-36 sm:w-44 rounded-lg overflow-hidden border border-[#8B0000]/50 shadow-[0_0_20px_rgba(139,0,0,0.4)]">
-              {tv.poster_path ? (
-                <img src={`${IMG_BASE}/w500${tv.poster_path}`} alt={tv.name} className="w-full aspect-[2/3] object-cover" />
-              ) : (
-                <div className="w-full aspect-[2/3] bg-[#1a0000] flex items-center justify-center">
-                  <span className="text-4xl">📺</span>
-                </div>
-              )}
+              <img src={`${IMG_BASE}/w500${tv.poster_path}`} alt={tv.name} className="w-full aspect-[2/3] object-cover" />
             </div>
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-white text-2xl sm:text-3xl font-black mb-2 leading-tight">{tv.name}</h1>
+            <h1 className="text-white text-2xl sm:text-3xl font-black mb-1 leading-tight">{tv.name}</h1>
+            
+            {/* LABEL DONGHUA OTOMATIS */}
+            {tv.original_language === 'zh' && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-[#E50914] text-white text-[10px] font-black px-2 py-0.5 rounded shadow-[0_0_10px_rgba(229,9,20,0.5)]">DONGHUA</span>
+                <span className="text-gray-500 text-xs italic">({tv.original_name})</span>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 mb-3">
-              {year && (
-                <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-[#E50914]" />{year}
-                </span>
-              )}
-              <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded">
-                {seasons} Season{seasons > 1 ? "s" : ""}
+              <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#E50914]" />{year}
               </span>
-              {genres && (
-                <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded">{genres}</span>
-              )}
+              <span className="bg-[#8B0000]/30 border border-[#8B0000]/50 text-gray-300 text-xs px-2 py-0.5 rounded">{genres}</span>
             </div>
 
             <div className="mb-4">
               <StarRating score={tv.vote_average} />
-              <p className="text-gray-600 text-xs mt-0.5">{tv.vote_count?.toLocaleString()} votes</p>
             </div>
 
-            {tv.overview && (
-              <p className="text-gray-400 text-sm leading-relaxed mb-5 line-clamp-3">{tv.overview}</p>
-            )}
+            <p className="text-gray-400 text-sm leading-relaxed mb-5 line-clamp-3">{tv.overview}</p>
 
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowPlayer(!showPlayer)}
-                className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white font-bold px-6 py-2.5 rounded transition-colors shadow-[0_0_16px_rgba(229,9,20,0.4)]"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                {showPlayer ? "Tutup Player" : "Watch Now"}
-              </button>
-              <button className="flex items-center gap-2 border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] text-white font-bold px-6 py-2.5 rounded transition-colors">
-                <Heart className="w-4 h-4 text-[#E50914]" />
-                Favorit
+              <button onClick={() => setShowPlayer(!showPlayer)} className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white font-bold px-6 py-2.5 rounded transition-colors shadow-[0_0_16px_rgba(229,9,20,0.4)]">
+                <Play className="w-4 h-4 fill-white" /> {showPlayer ? "Tutup Player" : "Watch Now"}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── Season & Episode Selector ─────────────────────── */}
-        <div className="mt-8 space-y-4">
-          {/* Season tabs */}
-          <div>
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Season</p>
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: seasons }, (_, i) => i + 1).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => { setSelectedSeason(s); setSelectedEpisode(1); }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${
-                    selectedSeason === s
-                      ? "bg-[#E50914] border-[#E50914] text-white"
-                      : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914]"
-                  }`}
-                >
-                  S{s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Episodes */}
-          {episodes.length > 0 && (
-            <div>
-              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Episode</p>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                {episodes.map((ep) => (
-                  <button
-                    key={ep.episode_number}
-                    onClick={() => { setSelectedEpisode(ep.episode_number); setShowPlayer(true); }}
-                    className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${
-                      selectedEpisode === ep.episode_number
-                        ? "bg-[#E50914] border-[#E50914] text-white"
-                        : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914]"
-                    }`}
-                    title={ep.name}
-                  >
-                    E{ep.episode_number}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Player Section ───────────────────────────────── */}
+        {/* Player & Episode Selector */}
         {showPlayer && (
-          <div className="mt-6">
-            <div className="flex flex-wrap gap-2 mb-3">
-              <div className="flex items-center gap-2 mr-2">
-                <Server className="w-4 h-4 text-[#E50914]" />
-                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Server</span>
-              </div>
+          <div className="mt-8">
+             {/* Server Selector */}
+             <div className="flex flex-wrap gap-2 mb-4">
               {allServers.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setSelectedServerId(s.id)}
                   className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${
-                    selectedServerId === s.id
-                      ? "bg-[#E50914] border-[#E50914] text-white"
-                      : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914]"
+                    selectedServerId === s.id ? "bg-[#E50914] border-[#E50914] text-white" : "border-[#8B0000]/50 bg-[#1a0000] text-gray-300 hover:border-[#E50914]"
                   }`}
                 >
                   {s.name}
@@ -258,34 +228,39 @@ export default function TvPage() {
               ))}
             </div>
 
-            <div
-              className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
-              style={{ paddingTop: "56.25%" }}
-            >
-              <iframe
-                ref={iframeRef}
-                src={getFinalUrl()}
-                className="absolute inset-0 w-full h-full"
-                allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture"
-                referrerPolicy="no-referrer"
-              />
+            <div className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]" style={{ paddingTop: "56.25%" }}>
+              {isScraping ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#E50914] mb-2" />
+                  <p className="text-xs font-bold animate-pulse">Mencari Link Video Bersih...</p>
+                </div>
+              ) : (
+                <iframe ref={iframeRef} src={getFinalUrl()} className="absolute inset-0 w-full h-full" allowFullScreen allow="autoplay; fullscreen" referrerPolicy="no-referrer" />
+              )}
             </div>
-
-            <p className="text-gray-600 text-xs mt-2 text-center">
-              Menonton: S{selectedSeason} E{selectedEpisode}
-            </p>
           </div>
         )}
 
-        {/* ── Similar Shows ────────────────────────────────── */}
+        {/* Season & Episode Tabs */}
+        <div className="mt-8 space-y-6">
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: seasons }, (_, i) => i + 1).map((s) => (
+              <button key={s} onClick={() => { setSelectedSeason(s); setSelectedEpisode(1); }} className={`text-xs font-bold px-4 py-2 rounded ${selectedSeason === s ? "bg-[#E50914] text-white" : "bg-[#1a0000] text-gray-400"}`}>Season {s}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+            {episodes.map((ep) => (
+              <button key={ep.episode_number} onClick={() => { setSelectedEpisode(ep.episode_number); setShowPlayer(true); }} className={`text-xs font-bold py-2 rounded border transition-all ${selectedEpisode === ep.episode_number ? "bg-[#E50914] border-[#E50914] text-white" : "border-[#8B0000]/30 bg-[#1a0000] text-gray-400"}`}>
+                EP {ep.episode_number}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Similar Content */}
         {(tv as any)?.similar?.results?.length > 0 && (
-          <div className="mt-10 border-t border-[#8B0000]/20 pt-8">
-            <ContentRow
-              title="Series Serupa"
-              items={(tv as any).similar.results}
-              mediaType="tv"
-            />
+          <div className="mt-12 pt-8 border-t border-[#8B0000]/20">
+            <ContentRow title="Series Serupa" items={(tv as any).similar.results} mediaType="tv" />
           </div>
         )}
       </div>
