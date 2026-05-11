@@ -1,59 +1,64 @@
 /**
- * Semantic design tokens for the mobile app.
- *
- * These tokens mirror the naming conventions used in web artifacts (index.css)
- * so that multi-artifact projects share a cohesive visual identity.
- *
- * Replace the placeholder values below with values that match the project's
- * brand. If a sibling web artifact exists, read its index.css and convert the
- * HSL values to hex so both artifacts use the same palette.
- *
- * To add dark mode, add a `dark` key with the same token names.
- * The useColors() hook will automatically pick it up.
+ * Tema Dark Mode – Xpogo Streaming
+ * Warna dasar: #0d0000 (merah gelap)
+ * Aksen merah: #E50914
  */
 
 const colors = {
   light: {
-    // Legacy aliases (kept for backward compatibility)
     text: "#0a0a0a",
-    tint: "#2f95dc",
-
-    // Core surfaces
+    tint: "#E50914",
     background: "#ffffff",
     foreground: "#0a0a0a",
-
-    // Cards / elevated surfaces
     card: "#f9f9f9",
     cardForeground: "#0a0a0a",
-
-    // Primary action color (buttons, links, active states)
-    primary: "#2f95dc",
+    primary: "#E50914",
     primaryForeground: "#ffffff",
-
-    // Secondary / less-emphasis interactive surfaces
     secondary: "#f0f0f0",
     secondaryForeground: "#1a1a1a",
-
-    // Muted / subdued elements (dividers, timestamps, placeholders)
     muted: "#f0f0f0",
     mutedForeground: "#737373",
-
-    // Accent highlights (badges, selected items, focus rings)
-    accent: "#f0f0f0",
-    accentForeground: "#1a1a1a",
-
-    // Destructive actions (delete, error states)
+    accent: "#E50914",
+    accentForeground: "#ffffff",
     destructive: "#ef4444",
     destructiveForeground: "#ffffff",
-
-    // Borders and input outlines
     border: "#e5e5e5",
     input: "#e5e5e5",
   },
 
-  // Border radius (in px). Sync from the sibling web artifact's --radius
-  // CSS variable. This value applies to cards, buttons, inputs, and modals.
-  radius: 8,
+  dark: {
+    text: "#f0f0f0",
+    tint: "#E50914",
+
+    // Warna dasar: hitam kemerahan
+    background: "#0d0000",
+    foreground: "#f0f0f0",
+
+    // Kartu / elevated surface
+    card: "#1a0000",
+    cardForeground: "#f0f0f0",
+
+    // Warna aksen utama: merah Netflix-style
+    primary: "#E50914",
+    primaryForeground: "#ffffff",
+
+    secondary: "#2a0505",
+    secondaryForeground: "#f0f0f0",
+
+    muted: "#1a0000",
+    mutedForeground: "#8a8a8a",
+
+    accent: "#E50914",
+    accentForeground: "#ffffff",
+
+    destructive: "#ff4444",
+    destructiveForeground: "#ffffff",
+
+    border: "#2a0505",
+    input: "#2a0505",
+  },
+
+  radius: 10,
 };
 
 export default colors;
