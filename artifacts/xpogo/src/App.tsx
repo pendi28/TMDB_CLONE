@@ -222,6 +222,16 @@ function AppContent() {
               <Route path="/tv/top-rated" component={() => <PageShell title="Top Rated TV Shows" queryKey={["top-tv", 1]} queryFn={() => tmdb.topTv(1)} mediaType="tv" />} />
               <Route path="/tv/on-tv" component={() => <PageShell title="On TV" queryKey={["on-tv", 1]} queryFn={() => tmdb.onTv(1)} mediaType="tv" />} />
               <Route path="/tv/airing-today" component={() => <PageShell title="Airing Today" queryKey={["airing-today", 1]} queryFn={() => tmdb.airingToday(1)} mediaType="tv" />} />
+              
+{/* TAMBAHKAN ROUTE DONGHUA DI SINI */}
+<Route path="/donghua" component={() => (
+  <PageShell 
+    title="Donghua China" 
+    queryKey={["donghua", 1]} 
+    queryFn={() => tmdb.donghua(1)} 
+    mediaType="tv" 
+  />
+)} />
               <Route path="/people" component={PeoplePage} />
               <Route path="/awards" component={AwardsPage} />
               <Route path="/awards/:section" component={AwardsPage} />
