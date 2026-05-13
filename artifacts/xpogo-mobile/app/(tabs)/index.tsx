@@ -171,6 +171,7 @@ export default function HomeScreen() {
 
   // Kategori khusus
   const [donghuaList, setDonghuaList] = useState<MediaItem[]>([]);
+  const [donghuaNewList, setDonghuaNewList] = useState<MediaItem[]>([]);
   const [animeList, setAnimeList] = useState<MediaItem[]>([]);
   const [kdramaList, setKdramaList] = useState<MediaItem[]>([]);
   const [cdramaList, setCdramaList] = useState<MediaItem[]>([]);
@@ -182,6 +183,7 @@ export default function HomeScreen() {
       tmdb.popularMovies().then(setMoviesData).catch(() => {}),
       tmdb.topMovies().then(setTopMoviesData).catch(() => {}),
       tmdb.donghua().then(d => setDonghuaList(d.results ?? [])).catch(() => {}),
+      tmdb.donghuaNew().then(d => setDonghuaNewList(d.results ?? [])).catch(() => {}),
       tmdb.anime().then(d => setAnimeList(d.results ?? [])).catch(() => {}),
       tmdb.dramaKorea().then(d => setKdramaList(d.results ?? [])).catch(() => {}),
       tmdb.dramaChina().then(d => setCdramaList(d.results ?? [])).catch(() => {}),
@@ -277,7 +279,8 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
 
-              {/* 4 Baris Kategori Utama */}
+              {/* 5 Baris Kategori Utama */}
+              <SectionRow title="🆕 Donghua Rilis Terbaru" items={donghuaNewList} type="tv" badge="NEW 2025" />
               <SectionRow title="🐉 Top Donghua Terpopuler" items={donghuaList} type="tv" badge="DONGHUA" />
               <SectionRow title="⛩️ Update Anime Jepang" items={animeList} type="tv" badge="ANIME" />
               <SectionRow title="🇰🇷 Drama Korea Terbaru" items={kdramaList} type="tv" badge="K-DRAMA" />
