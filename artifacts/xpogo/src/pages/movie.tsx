@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { Star, Clock, Calendar, Play, ChevronLeft, Heart } from "lucide-react";
+import { Star, Clock, Calendar, Play, ChevronLeft, Heart, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
@@ -11,14 +11,23 @@ import { usePeachifyPostMessage, getSavedStartAt } from "@/hooks/usePlayerProgre
 const IMG_BASE = "https://image.tmdb.org/t/p";
 
 const BUILTIN_LIST = [
-  { id: "vidplus",   name: "🎬 VidPlus",    url: "vidplus" },
-  { id: "peachify",  name: "🍑 Peachify VIP", url: "peachify" },
-  { id: "vidzee",    name: "🎭 VidZee",      url: "vidzee" },
-  { id: "vixsrc",    name: "🦊 VixSrc",      url: "vixsrc" },
-  { id: "myvercel",  name: "Server Utama",    url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",       url: "https://zxcstream.xyz/player/movie/{id}" },
-  { id: "vidsrc-to", name: "VidSrc",          url: "https://vidsrc.to/embed/{type}/{id}" },
-  { id: "vidsrcxyz", name: "VidSrc.xyz",      url: "https://vidsrc.xyz/embed/{type}/{id}" },
+  { id: "vidplus",   name: "🎬 VidPlus",       url: "vidplus" },
+  { id: "peachify",  name: "🍑 Peachify VIP",   url: "peachify" },
+  { id: "vidzee",    name: "🎭 VidZee",         url: "vidzee" },
+  { id: "vixsrc",    name: "🦊 VixSrc",         url: "vixsrc" },
+  { id: "2embed",    name: "📺 2Embed",          url: "2embed" },
+  { id: "vidlink",   name: "🔗 VidLink",         url: "vidlink" },
+  { id: "nontongo",  name: "🎥 Nontongo",        url: "nontongo" },
+  { id: "myvercel",  name: "Server Utama",       url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
+  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}" },
+  { id: "vidsrc-to", name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
+  { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
+];
+
+const DOWNLOAD_SOURCES = [
+  { name: "⬇️ Download via VidLink",      url: (id: number) => `https://vidlink.pro/movie/${id}?download=1` },
+  { name: "⬇️ Download via MultiEmbed",   url: (id: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1` },
+  { name: "⬇️ Download via VidSrc",       url: (id: number) => `https://dl.vidsrc.vip/movie/${id}` },
 ];
 
 function StarRating({ score }: { score?: number }) {
@@ -42,6 +51,7 @@ export default function MoviePage() {
   const { id } = useParams<{ id: string }>();
   const movieId = Number(id);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [activeServerId, setActiveServerId] = useState<string>("vidplus");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPeachify = activeServerId === "peachify";
@@ -79,7 +89,7 @@ export default function MoviePage() {
   const getFinalPlayerUrl = () => {
     // VidPlus
     if (activeServerId === "vidplus") {
-      return `https://player.vidplus.to/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&icons=netflix`;
+      return `https://player2.vidplus.pro/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
     }
     // VidZee
     if (activeServerId === "vidzee") {
@@ -97,6 +107,18 @@ export default function MoviePage() {
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
       return `https://peachify.top/embed/movie/${movieId}?${params}`;
     }
+    // 2Embed
+    if (activeServerId === "2embed") {
+      return `https://www.2embed.cc/embed/${movieId}`;
+    }
+    // VidLink
+    if (activeServerId === "vidlink") {
+      return `https://vidlink.pro/movie/${movieId}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true&nextbutton=true`;
+    }
+    // Nontongo
+    if (activeServerId === "nontongo") {
+      return `https://www.nontongo.win/embed/movie/${movieId}`;
+    }
     const builtin = BUILTIN_LIST.find((b) => b.id === activeServerId);
     const custom = customServers.find((s) => s.id === activeServerId);
     let template = builtin ? builtin.url : custom?.url;
@@ -104,7 +126,7 @@ export default function MoviePage() {
     return template.replace("{type}", "movie").replace("{id}", String(movieId));
   };
 
-  const alwaysOn = ["vidplus", "peachify", "vidzee", "vixsrc"];
+  const alwaysOn = ["vidplus", "peachify", "vidzee", "vixsrc", "2embed", "vidlink", "nontongo"];
   const enabledBuiltins = BUILTIN_LIST.filter(
     (b) => alwaysOn.includes(b.id) ||
            (builtinStates as BuiltinServerState)?.[b.id] !== false
@@ -194,11 +216,40 @@ export default function MoviePage() {
                 <Play className="w-4 h-4 fill-white" />
                 {showPlayer ? "Tutup Player" : "Watch Now"}
               </button>
+              <button
+                onClick={() => setShowDownload(!showDownload)}
+                className="flex items-center gap-2 border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] hover:bg-[#2a0000] text-white font-bold px-6 py-2.5 rounded transition-colors"
+              >
+                <Download className="w-4 h-4 text-[#E50914]" />
+                Download
+              </button>
               <button className="flex items-center gap-2 border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] text-white font-bold px-6 py-2.5 rounded transition-colors">
                 <Heart className="w-4 h-4 text-[#E50914]" />
                 Favorit
               </button>
             </div>
+
+            {/* Download Panel */}
+            {showDownload && (
+              <div className="mt-4 p-4 bg-[#1a0000] rounded-lg border border-[#8B0000]/40">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">Pilih Sumber Download:</p>
+                <div className="flex flex-col gap-2">
+                  {DOWNLOAD_SOURCES.map((src) => (
+                    <a
+                      key={src.name}
+                      href={src.url(movieId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-[#0d0000] hover:bg-[#2a0000] border border-[#8B0000]/30 hover:border-[#E50914]/50 text-gray-300 text-sm px-4 py-2.5 rounded transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-[#E50914] flex-shrink-0" />
+                      {src.name}
+                    </a>
+                  ))}
+                </div>
+                <p className="text-gray-600 text-xs mt-3">⚠️ Pilih kualitas dan format yang tersedia di situs download.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -218,9 +269,12 @@ export default function MoviePage() {
                   }`}
                 >
                   {s.name}
-                  {s.id === "vidplus" && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>}
-                  {s.id === "vidzee" && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
-                  {s.id === "vixsrc" && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "vidplus"  && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">PRO</span>}
+                  {s.id === "vidzee"   && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vixsrc"   && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "2embed"   && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vidlink"  && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
+                  {s.id === "nontongo" && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
             </div>
@@ -231,8 +285,10 @@ export default function MoviePage() {
                 src={getFinalPlayerUrl()}
                 className="absolute inset-0 w-full h-full"
                 allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture"
-                referrerPolicy="no-referrer"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
+                referrerPolicy="origin"
+                scrolling="no"
+                frameBorder="0"
               />
             </div>
           </div>

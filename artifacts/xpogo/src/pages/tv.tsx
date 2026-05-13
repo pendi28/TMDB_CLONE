@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { Play, ChevronLeft, Loader2 } from "lucide-react";
+import { Play, ChevronLeft, Loader2, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdb } from "@/lib/tmdb";
 import { fb } from "@/lib/firebase";
@@ -15,9 +15,18 @@ const BUILTIN = [
   { id: "peachify",   name: "🍑 Peachify VIP",         url: "peachify" },
   { id: "vidzee",     name: "🎭 VidZee",               url: "vidzee" },
   { id: "vixsrc",     name: "🦊 VixSrc",               url: "vixsrc" },
+  { id: "2embed",     name: "📺 2Embed",               url: "2embed" },
+  { id: "vidlink",    name: "🔗 VidLink",               url: "vidlink" },
+  { id: "nontongo",   name: "🎥 Nontongo",              url: "nontongo" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)", url: "scraper" },
   { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
   { id: "vidsrc-to",  name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
+];
+
+const DOWNLOAD_SOURCES_TV = [
+  { name: "⬇️ Download via VidLink",    url: (id: number, s: number, e: number) => `https://vidlink.pro/tv/${id}/${s}/${e}?download=1` },
+  { name: "⬇️ Download via VidSrc",     url: (id: number, _s: number, _e: number) => `https://dl.vidsrc.vip/tv/${id}` },
+  { name: "⬇️ Download via MultiEmbed", url: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}` },
 ];
 
 export default function TvPage() {
@@ -26,6 +35,7 @@ export default function TvPage() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState("vidplus");
 
   const [scrapedUrl, setScrapedUrl] = useState<string | null>(null);
@@ -104,7 +114,7 @@ export default function TvPage() {
   const getFinalUrl = () => {
     // VidPlus
     if (selectedServerId === "vidplus") {
-      return `https://player.vidplus.to/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
+      return `https://player2.vidplus.pro/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
     }
     // VidZee
     if (selectedServerId === "vidzee") {
@@ -114,19 +124,30 @@ export default function TvPage() {
     if (selectedServerId === "vixsrc") {
       return `https://vixsrc.to/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // Peachify
+    // Peachify — FIXED: gunakan path params bukan query params
     if (selectedServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(tvId, selectedSeason, selectedEpisode);
       const params = new URLSearchParams({ accent, quality: "1080", autoNext: "1" });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
-      return `https://peachify.top/embed/tv/${tvId}?season=${selectedSeason}&episode=${selectedEpisode}&${params}`;
+      return `https://peachify.top/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?${params}`;
+    }
+    // 2Embed
+    if (selectedServerId === "2embed") {
+      return `https://www.2embed.cc/embedtv/${tvId}&s=${selectedSeason}&e=${selectedEpisode}`;
+    }
+    // VidLink
+    if (selectedServerId === "vidlink") {
+      return `https://vidlink.pro/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true&nextbutton=true`;
+    }
+    // Nontongo
+    if (selectedServerId === "nontongo") {
+      return `https://nontongo.win/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
     // Auto Scraper
     if (selectedServerId === "auto-clean") {
       if (isScraping) return "";
       if (scrapedUrl) return `https://artplayer.org/?url=${encodeURIComponent(scrapedUrl)}&autoPlay=true`;
-      // Fallback ke ZxcStream
       return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
     // Built-in / Custom
@@ -140,7 +161,7 @@ export default function TvPage() {
       .replace("{e}", String(selectedEpisode));
   };
 
-  const alwaysEnabled = ["vidplus", "vidzee", "vixsrc", "auto-clean"];
+  const alwaysEnabled = ["vidplus", "peachify", "vidzee", "vixsrc", "2embed", "vidlink", "nontongo", "auto-clean"];
   const allServers = [
     ...BUILTIN.filter(
       (b) => alwaysEnabled.includes(b.id) ||
@@ -208,13 +229,44 @@ export default function TvPage() {
 
             <p className="text-gray-400 text-sm mb-6 line-clamp-3">{tv.overview}</p>
 
-            <button
-              onClick={() => setShowPlayer(!showPlayer)}
-              className="bg-[#E50914] hover:bg-[#CC0000] text-white font-black px-8 py-3 rounded-full flex items-center gap-2 mx-auto md:mx-0 transition-colors shadow-[0_0_20px_rgba(229,9,20,0.4)]"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              {showPlayer ? "TUTUP PLAYER" : "NONTON SEKARANG"}
-            </button>
+            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+              <button
+                onClick={() => setShowPlayer(!showPlayer)}
+                className="bg-[#E50914] hover:bg-[#CC0000] text-white font-black px-8 py-3 rounded-full flex items-center gap-2 transition-colors shadow-[0_0_20px_rgba(229,9,20,0.4)]"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                {showPlayer ? "TUTUP PLAYER" : "NONTON SEKARANG"}
+              </button>
+              <button
+                onClick={() => setShowDownload(!showDownload)}
+                className="border border-[#8B0000] hover:border-[#E50914] bg-[#1a0000] hover:bg-[#2a0000] text-white font-black px-6 py-3 rounded-full flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4 text-[#E50914]" />
+                DOWNLOAD
+              </button>
+            </div>
+
+            {/* Download Panel */}
+            {showDownload && (
+              <div className="mt-4 p-4 bg-[#1a0000] rounded-lg border border-[#8B0000]/40">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">Pilih Sumber Download (S{selectedSeason}E{selectedEpisode}):</p>
+                <div className="flex flex-col gap-2">
+                  {DOWNLOAD_SOURCES_TV.map((src) => (
+                    <a
+                      key={src.name}
+                      href={src.url(tvId, selectedSeason, selectedEpisode)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-[#0d0000] hover:bg-[#2a0000] border border-[#8B0000]/30 hover:border-[#E50914]/50 text-gray-300 text-sm px-4 py-2.5 rounded transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-[#E50914] flex-shrink-0" />
+                      {src.name}
+                    </a>
+                  ))}
+                </div>
+                <p className="text-gray-600 text-xs mt-3">⚠️ Pilih episode dan kualitas di situs download.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -235,9 +287,12 @@ export default function TvPage() {
                   }`}
                 >
                   {s.name}
-                  {s.id === "vidplus" && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">NEW</span>}
-                  {s.id === "vidzee" && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
-                  {s.id === "vixsrc" && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "vidplus"  && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">PRO</span>}
+                  {s.id === "vidzee"   && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vixsrc"   && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "2embed"   && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vidlink"  && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
+                  {s.id === "nontongo" && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
             </div>
@@ -255,8 +310,10 @@ export default function TvPage() {
                 src={getFinalUrl()}
                 className="absolute inset-0 w-full h-full"
                 allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture"
-                referrerPolicy="no-referrer"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
+                referrerPolicy="origin"
+                scrolling="no"
+                frameBorder="0"
               />
             </div>
           </div>
