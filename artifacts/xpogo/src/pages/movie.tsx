@@ -19,7 +19,7 @@ const BUILTIN_LIST = [
   { id: "vidlink",   name: "🔗 VidLink",         url: "vidlink" },
   { id: "nontongo",  name: "🎥 Nontongo",        url: "nontongo" },
   { id: "myvercel",  name: "Server Utama",       url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.icu/player/movie/{id}" },
+  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}" },
   { id: "vidsrc-to", name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
   { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
