@@ -311,7 +311,7 @@ export default function TvPage() {
                 className="absolute inset-0 w-full h-full"
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
-                referrerPolicy="origin"
+                referrerPolicy="no-referrer"
                 scrolling="no"
                 frameBorder="0"
               />
