@@ -21,6 +21,8 @@ export const tmdb = {
   popularTv:     (page = 1) => tmdbFetch<any>("/tv/popular",    { page }),
   topMovies:     (page = 1) => tmdbFetch<any>("/movie/top_rated", { page }),
   topTv:         (page = 1) => tmdbFetch<any>("/tv/top_rated",   { page }),
+  nowPlaying:    (page = 1) => tmdbFetch<any>("/movie/now_playing", { page }),
+  upcoming:      (page = 1) => tmdbFetch<any>("/movie/upcoming", { page }),
   movieDetail:   (id: number) => tmdbFetch<any>(`/movie/${id}`, { append_to_response: "credits,similar,videos" }),
   tvDetail:      (id: number) => tmdbFetch<any>(`/tv/${id}`,    { append_to_response: "credits,similar,seasons,videos" }),
   tvSeason:      (id: number, season: number) => tmdbFetch<any>(`/tv/${id}/season/${season}`),
@@ -32,82 +34,123 @@ export const tmdb = {
   discover:      (type: "movie" | "tv", genreId: number, page = 1) =>
     tmdbFetch<any>(`/discover/${type}`, { with_genres: genreId, page, sort_by: "popularity.desc" }),
 
-  // ── Kategori Khusus ────────────────────────────────────────────────
-  // Donghua: Animasi (genre 16) dari China (bahasa zh) — Terpopuler
+  // ── Donghua (Animasi China) ──────────────────────────────────────
   donghua: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "zh",
-      sort_by: "popularity.desc",
-      page,
+      with_genres: 16, with_original_language: "zh",
+      sort_by: "popularity.desc", page,
     }),
-
-  // Donghua Baru: Rilis terbaru tahun 2024-2025
   donghuaNew: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "zh",
+      with_genres: 16, with_original_language: "zh",
       sort_by: "first_air_date.desc",
       "first_air_date.gte": "2024-01-01",
-      "vote_count.gte": 5,
-      page,
+      "vote_count.gte": 5, page,
     }),
-
-  // Donghua Tayang Hari Ini / Sedang Tayang
   donghuaAiring: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "zh",
-      sort_by: "popularity.desc",
-      with_status: "0",
-      page,
+      with_genres: 16, with_original_language: "zh",
+      sort_by: "popularity.desc", with_status: "0", page,
     }),
-
-  // Donghua Top Rating
   donghuaTopRated: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "zh",
-      sort_by: "vote_average.desc",
-      "vote_count.gte": 50,
-      page,
+      with_genres: 16, with_original_language: "zh",
+      sort_by: "vote_average.desc", "vote_count.gte": 50, page,
     }),
 
-  // Anime: Animasi (genre 16) dari Jepang (bahasa ja)
+  // ── Anime Jepang ────────────────────────────────────────────────
   anime: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "ja",
-      sort_by: "popularity.desc",
-      page,
+      with_genres: 16, with_original_language: "ja",
+      sort_by: "popularity.desc", page,
     }),
-
-  // Anime Baru: Rilis terbaru
   animeNew: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 16,
-      with_original_language: "ja",
+      with_genres: 16, with_original_language: "ja",
       sort_by: "first_air_date.desc",
       "first_air_date.gte": "2024-01-01",
-      "vote_count.gte": 5,
-      page,
+      "vote_count.gte": 5, page,
+    }),
+  animeTopRated: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16, with_original_language: "ja",
+      sort_by: "vote_average.desc", "vote_count.gte": 100, page,
     }),
 
-  // Drama Korea: Drama (genre 18) dari Korea (bahasa ko)
+  // ── Drama Asia ──────────────────────────────────────────────────
   dramaKorea: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 18,
-      with_original_language: "ko",
-      sort_by: "popularity.desc",
-      page,
+      with_genres: 18, with_original_language: "ko",
+      sort_by: "popularity.desc", page,
     }),
-
-  // Drama China: Drama (genre 18) dari China (bahasa zh)
+  dramaKoreaNew: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 18, with_original_language: "ko",
+      sort_by: "first_air_date.desc",
+      "first_air_date.gte": "2024-01-01",
+      "vote_count.gte": 5, page,
+    }),
   dramaChina: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
-      with_genres: 18,
+      with_genres: 18, with_original_language: "zh",
+      sort_by: "popularity.desc", page,
+    }),
+  dramaTaiwan: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
       with_original_language: "zh",
       sort_by: "popularity.desc",
-      page,
+      with_origin_country: "TW", page,
+    }),
+  dramaThailand: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_original_language: "th",
+      sort_by: "popularity.desc", page,
+    }),
+  dramaIndonesia: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_original_language: "id",
+      sort_by: "popularity.desc", page,
+    }),
+  dramaJapan: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 18, with_original_language: "ja",
+      sort_by: "popularity.desc", page,
+    }),
+  dramaPhilippines: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_original_language: "tl",
+      sort_by: "popularity.desc", page,
+    }),
+
+  // ── Film Asia ───────────────────────────────────────────────────
+  filmKorea: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "ko",
+      sort_by: "popularity.desc", page,
+    }),
+  filmChina: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "zh",
+      sort_by: "popularity.desc", page,
+    }),
+  filmJepang: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "ja",
+      sort_by: "popularity.desc", page,
+    }),
+  filmThailand: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "th",
+      sort_by: "popularity.desc", page,
+    }),
+  bollywood: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "hi",
+      sort_by: "popularity.desc", page,
+    }),
+  filmIndonesia: (page = 1) =>
+    tmdbFetch<any>("/discover/movie", {
+      with_original_language: "id",
+      sort_by: "popularity.desc", page,
     }),
 };
