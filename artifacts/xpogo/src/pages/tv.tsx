@@ -19,7 +19,7 @@ const BUILTIN = [
   { id: "vidlink",    name: "🔗 VidLink",               url: "vidlink" },
   { id: "nontongo",   name: "🎥 Nontongo",              url: "nontongo" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)", url: "scraper" },
-  { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
+  { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.icu/player/tv/{id}/{s}/{e}" },
   { id: "vidsrc-to",  name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
 ];
 
