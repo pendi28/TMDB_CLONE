@@ -405,7 +405,10 @@ export default function PlayerScreen() {
         ) : activeUrl ? (
           <WebView
             key={webviewKey}
-            source={{ uri: activeUrl }}
+            source={{
+              uri: activeUrl,
+              headers: { Referer: "https://www.google.com", Origin: "https://www.google.com" },
+            }}
             style={{ flex: 1, backgroundColor: "#000" }}
             onLoadStart={() => startLoadingWithTimeout()}
             onLoadEnd={() => { clearLoadingTimer(); setLoading(false); }}
@@ -418,7 +421,13 @@ export default function PlayerScreen() {
             domStorageEnabled
             mediaPlaybackRequiresUserAction={false}
             allowsInlineMediaPlayback
-            userAgent="Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            allowsProtectedMedia
+            thirdPartyCookiesEnabled
+            sharedCookiesEnabled
+            originWhitelist={["*"]}
+            mixedContentMode="always"
+            setSupportMultipleWindows={false}
+            userAgent="Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
           />
         ) : (
           <View style={S.noUrlBox}>
