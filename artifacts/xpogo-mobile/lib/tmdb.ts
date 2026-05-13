@@ -33,12 +33,43 @@ export const tmdb = {
     tmdbFetch<any>(`/discover/${type}`, { with_genres: genreId, page, sort_by: "popularity.desc" }),
 
   // ── Kategori Khusus ────────────────────────────────────────────────
-  // Donghua: Animasi (genre 16) dari China (bahasa zh)
+  // Donghua: Animasi (genre 16) dari China (bahasa zh) — Terpopuler
   donghua: (page = 1) =>
     tmdbFetch<any>("/discover/tv", {
       with_genres: 16,
       with_original_language: "zh",
       sort_by: "popularity.desc",
+      page,
+    }),
+
+  // Donghua Baru: Rilis terbaru tahun 2024-2025
+  donghuaNew: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "zh",
+      sort_by: "first_air_date.desc",
+      "first_air_date.gte": "2024-01-01",
+      "vote_count.gte": 5,
+      page,
+    }),
+
+  // Donghua Tayang Hari Ini / Sedang Tayang
+  donghuaAiring: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "zh",
+      sort_by: "popularity.desc",
+      with_status: "0",
+      page,
+    }),
+
+  // Donghua Top Rating
+  donghuaTopRated: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "zh",
+      sort_by: "vote_average.desc",
+      "vote_count.gte": 50,
       page,
     }),
 
@@ -48,6 +79,17 @@ export const tmdb = {
       with_genres: 16,
       with_original_language: "ja",
       sort_by: "popularity.desc",
+      page,
+    }),
+
+  // Anime Baru: Rilis terbaru
+  animeNew: (page = 1) =>
+    tmdbFetch<any>("/discover/tv", {
+      with_genres: 16,
+      with_original_language: "ja",
+      sort_by: "first_air_date.desc",
+      "first_air_date.gte": "2024-01-01",
+      "vote_count.gte": 5,
       page,
     }),
 
