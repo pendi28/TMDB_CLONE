@@ -13,7 +13,6 @@ import { fb } from "@/lib/firebase";
 const IMG_W = "https://image.tmdb.org/t/p/w500";
 const IMG_B = "https://image.tmdb.org/t/p/w780";
 const { width, height } = Dimensions.get("window");
-const DRAWER_W = Math.min(width * 0.82, 320);
 const CARD_W = (width - 56) / 3.2;
 const BG = "#0d0000";
 const CARD_BG = "#1a0000";
@@ -44,22 +43,22 @@ interface CustomMovie {
 
 function LanguageBadge({ lang }: { lang?: string }) {
   if (!lang) return null;
-  if (lang === "zh") return (
-    <View style={[S.langBadge, { backgroundColor: RED }]}>
-      <Text style={S.langBadgeText}>DONGHUA</Text>
+  const map: Record<string, { label: string; color: string }> = {
+    zh: { label: "DONGHUA", color: RED },
+    ja: { label: "ANIME",   color: "#7c3aed" },
+    ko: { label: "K-DRAMA", color: "#0369a1" },
+    th: { label: "THAI",    color: "#d97706" },
+    id: { label: "INDO",    color: "#059669" },
+    hi: { label: "HINDI",   color: "#dc2626" },
+    tl: { label: "PH",      color: "#2563eb" },
+  };
+  const m = map[lang];
+  if (!m) return null;
+  return (
+    <View style={[S.langBadge, { backgroundColor: m.color }]}>
+      <Text style={S.langBadgeText}>{m.label}</Text>
     </View>
   );
-  if (lang === "ja") return (
-    <View style={[S.langBadge, { backgroundColor: "#7c3aed" }]}>
-      <Text style={S.langBadgeText}>ANIME</Text>
-    </View>
-  );
-  if (lang === "ko") return (
-    <View style={[S.langBadge, { backgroundColor: "#0369a1" }]}>
-      <Text style={S.langBadgeText}>K-DRAMA</Text>
-    </View>
-  );
-  return null;
 }
 
 function RatingBadge({ score }: { score?: number }) {
@@ -97,8 +96,8 @@ function MediaCard({ item, type }: { item: MediaItem; type: "movie" | "tv" }) {
   );
 }
 
-function SectionRow({ title, items, type, badge }: {
-  title: string; items: MediaItem[]; type: "movie" | "tv"; badge?: string;
+function SectionRow({ title, items, type, badge, badgeColor }: {
+  title: string; items: MediaItem[]; type: "movie" | "tv"; badge?: string; badgeColor?: string;
 }) {
   if (!items.length) return null;
   return (
@@ -106,7 +105,7 @@ function SectionRow({ title, items, type, badge }: {
       <View style={S.sectionHeader}>
         <Text style={S.sectionTitle}>{title}</Text>
         {badge && (
-          <View style={[S.categoryBadge, { backgroundColor: RED }]}>
+          <View style={[S.categoryBadge, { backgroundColor: badgeColor ?? RED }]}>
             <Text style={S.categoryBadgeText}>{badge}</Text>
           </View>
         )}
@@ -133,10 +132,7 @@ function HeroBanner({ item, onWatch, onInfo }: {
       <View style={S.heroContent}>
         <LanguageBadge lang={item.original_language} />
         <Text style={S.heroTitle} numberOfLines={2}>{item.title ?? item.name}</Text>
-        {item.overview
-          ? <Text style={S.heroOverview} numberOfLines={2}>{item.overview}</Text>
-          : null
-        }
+        {item.overview ? <Text style={S.heroOverview} numberOfLines={2}>{item.overview}</Text> : null}
         <View style={S.heroBtns}>
           <TouchableOpacity style={S.btnWatch} onPress={onWatch} activeOpacity={0.85}>
             <Text style={S.btnWatchText}>▶  Tonton</Text>
@@ -169,12 +165,28 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Kategori khusus
+  // Donghua
   const [donghuaList, setDonghuaList] = useState<MediaItem[]>([]);
   const [donghuaNewList, setDonghuaNewList] = useState<MediaItem[]>([]);
+  const [donghuaTopList, setDonghuaTopList] = useState<MediaItem[]>([]);
+  // Anime
   const [animeList, setAnimeList] = useState<MediaItem[]>([]);
+  const [animeNewList, setAnimeNewList] = useState<MediaItem[]>([]);
+  // Drama Asia
   const [kdramaList, setKdramaList] = useState<MediaItem[]>([]);
+  const [kdramaNewList, setKdramaNewList] = useState<MediaItem[]>([]);
   const [cdramaList, setCdramaList] = useState<MediaItem[]>([]);
+  const [thaiDramaList, setThaiDramaList] = useState<MediaItem[]>([]);
+  const [indoDramaList, setIndoDramaList] = useState<MediaItem[]>([]);
+  const [taiwanDramaList, setTaiwanDramaList] = useState<MediaItem[]>([]);
+  const [japanDramaList, setJapanDramaList] = useState<MediaItem[]>([]);
+  // Film Asia & Lokal
+  const [filmKoreaList, setFilmKoreaList] = useState<MediaItem[]>([]);
+  const [filmChinaList, setFilmChinaList] = useState<MediaItem[]>([]);
+  const [filmJepangList, setFilmJepangList] = useState<MediaItem[]>([]);
+  const [filmThaiList, setFilmThaiList] = useState<MediaItem[]>([]);
+  const [bollywoodList, setBollywoodList] = useState<MediaItem[]>([]);
+  const [filmIndoList, setFilmIndoList] = useState<MediaItem[]>([]);
 
   const loadAll = useCallback(async () => {
     return Promise.all([
@@ -182,11 +194,28 @@ export default function HomeScreen() {
       tmdb.trending("all", "day").then(setTrendDay).catch(() => {}),
       tmdb.popularMovies().then(setMoviesData).catch(() => {}),
       tmdb.topMovies().then(setTopMoviesData).catch(() => {}),
+      // Donghua
       tmdb.donghua().then(d => setDonghuaList(d.results ?? [])).catch(() => {}),
       tmdb.donghuaNew().then(d => setDonghuaNewList(d.results ?? [])).catch(() => {}),
+      tmdb.donghuaTopRated().then(d => setDonghuaTopList(d.results ?? [])).catch(() => {}),
+      // Anime
       tmdb.anime().then(d => setAnimeList(d.results ?? [])).catch(() => {}),
+      tmdb.animeNew().then(d => setAnimeNewList(d.results ?? [])).catch(() => {}),
+      // Drama Asia
       tmdb.dramaKorea().then(d => setKdramaList(d.results ?? [])).catch(() => {}),
+      tmdb.dramaKoreaNew().then(d => setKdramaNewList(d.results ?? [])).catch(() => {}),
       tmdb.dramaChina().then(d => setCdramaList(d.results ?? [])).catch(() => {}),
+      tmdb.dramaThailand().then(d => setThaiDramaList(d.results ?? [])).catch(() => {}),
+      tmdb.dramaIndonesia().then(d => setIndoDramaList(d.results ?? [])).catch(() => {}),
+      tmdb.dramaTaiwan().then(d => setTaiwanDramaList(d.results ?? [])).catch(() => {}),
+      tmdb.dramaJapan().then(d => setJapanDramaList(d.results ?? [])).catch(() => {}),
+      // Film Asia & Lokal
+      tmdb.filmKorea().then(d => setFilmKoreaList(d.results ?? [])).catch(() => {}),
+      tmdb.filmChina().then(d => setFilmChinaList(d.results ?? [])).catch(() => {}),
+      tmdb.filmJepang().then(d => setFilmJepangList(d.results ?? [])).catch(() => {}),
+      tmdb.filmThailand().then(d => setFilmThaiList(d.results ?? [])).catch(() => {}),
+      tmdb.bollywood().then(d => setBollywoodList(d.results ?? [])).catch(() => {}),
+      tmdb.filmIndonesia().then(d => setFilmIndoList(d.results ?? [])).catch(() => {}),
     ]);
   }, []);
 
@@ -209,12 +238,10 @@ export default function HomeScreen() {
   }, [loadAll, loadFirebaseData]);
 
   useEffect(() => { loadFirebaseData(); }, []);
-
   useEffect(() => {
     const sub = AppState.addEventListener("change", s => { if (s === "active") loadFirebaseData(); });
     return () => sub.remove();
   }, [loadFirebaseData]);
-
   useEffect(() => {
     const id = setInterval(loadFirebaseData, 30_000);
     return () => clearInterval(id);
@@ -279,14 +306,32 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
 
-              {/* 5 Baris Kategori Utama */}
+              {/* ── Donghua ─────────────────────────────────── */}
               <SectionRow title="🆕 Donghua Rilis Terbaru" items={donghuaNewList} type="tv" badge="NEW 2025" />
               <SectionRow title="🐉 Top Donghua Terpopuler" items={donghuaList} type="tv" badge="DONGHUA" />
-              <SectionRow title="⛩️ Update Anime Jepang" items={animeList} type="tv" badge="ANIME" />
-              <SectionRow title="🇰🇷 Drama Korea Terbaru" items={kdramaList} type="tv" badge="K-DRAMA" />
-              <SectionRow title="🇨🇳 Chinese Drama" items={cdramaList} type="tv" badge="C-DRAMA" />
+              <SectionRow title="⭐ Donghua Top Rating" items={donghuaTopList} type="tv" badge="TOP" badgeColor="#f59e0b" />
 
-              {/* Trending */}
+              {/* ── Anime ────────────────────────────────────── */}
+              <SectionRow title="🆕 Update Anime Terbaru" items={animeNewList} type="tv" badge="NEW" />
+              <SectionRow title="⛩️ Anime Jepang Populer" items={animeList} type="tv" badge="ANIME" badgeColor="#7c3aed" />
+
+              {/* ── Drama Korea ───────────────────────────────── */}
+              <SectionRow title="🆕 Drama Korea Terbaru" items={kdramaNewList} type="tv" badge="NEW" />
+              <SectionRow title="🇰🇷 Drama Korea Populer" items={kdramaList} type="tv" badge="K-DRAMA" badgeColor="#0369a1" />
+
+              {/* ── Drama China & Taiwan ──────────────────────── */}
+              <SectionRow title="🇨🇳 Chinese Drama" items={cdramaList} type="tv" badge="C-DRAMA" />
+              <SectionRow title="🇹🇼 Taiwan Drama" items={taiwanDramaList} type="tv" badge="TW" badgeColor="#dc2626" />
+
+              {/* ── Drama Thailand & Japan ────────────────────── */}
+              <SectionRow title="🇹🇭 Drama Thailand" items={thaiDramaList} type="tv" badge="THAI" badgeColor="#d97706" />
+              <SectionRow title="🇯🇵 Drama Jepang" items={japanDramaList} type="tv" badge="JDRAMA" badgeColor="#7c3aed" />
+
+              {/* ── Indonesia ─────────────────────────────────── */}
+              <SectionRow title="🇮🇩 Drama Indonesia" items={indoDramaList} type="tv" badge="INDO" badgeColor="#059669" />
+              <SectionRow title="🇮🇩 Film Indonesia" items={filmIndoList} type="movie" badge="LOKAL" badgeColor="#059669" />
+
+              {/* ── Trending ─────────────────────────────────── */}
               <View style={S.section}>
                 <View style={S.sectionHeader}>
                   <Text style={S.sectionTitle}>📈 Trending</Text>
@@ -308,6 +353,14 @@ export default function HomeScreen() {
                 </ScrollView>
               </View>
 
+              {/* ── Film Asia ─────────────────────────────────── */}
+              <SectionRow title="🇰🇷 Film Korea" items={filmKoreaList} type="movie" badge="K-MOVIE" badgeColor="#0369a1" />
+              <SectionRow title="🇨🇳 Film China" items={filmChinaList} type="movie" badge="C-MOVIE" />
+              <SectionRow title="🇯🇵 Film Jepang" items={filmJepangList} type="movie" badge="J-MOVIE" badgeColor="#7c3aed" />
+              <SectionRow title="🇹🇭 Film Thailand" items={filmThaiList} type="movie" badge="THAI" badgeColor="#d97706" />
+              <SectionRow title="🎬 Bollywood" items={bollywoodList} type="movie" badge="INDIA" badgeColor="#dc2626" />
+
+              {/* ── Film Populer ──────────────────────────────── */}
               <SectionRow title="🔥 Film Populer" items={popularMovies} type="movie" />
             </>
         }
@@ -320,7 +373,7 @@ export default function HomeScreen() {
           <View style={S.searchBar}>
             <TextInput
               style={S.searchInput}
-              placeholder="Cari donghua, anime, drama..."
+              placeholder="Cari donghua, anime, drama, film..."
               placeholderTextColor={GRAY}
               value={searchQuery}
               onChangeText={q => { setSearchQuery(q); if (q.length > 1) doSearch(q); else setSearchResults([]); }}
