@@ -9,6 +9,7 @@ import WebView from "react-native-webview";
 import * as ScreenOrientation from "expo-screen-orientation";
 import * as NavigationBar from "expo-navigation-bar";
 import { fb } from "@/lib/firebase";
+import SearchSubtitles from '../../components/SearchSubtitles';
 import ShareSheet from "@/components/ShareSheet";
 
 const BG = "#0d0000";
