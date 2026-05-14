@@ -19,6 +19,7 @@ const BUILTIN_LIST = [
   { id: "vidlink",   name: "🔗 VidLink",         url: "vidlink" },
   { id: "nontongo",  name: "🎥 Nontongo",        url: "nontongo" },
   { id: "autoembed", name: "🌐 AutoEmbed",        url: "autoembed" },
+  { id: "psyplay",   name: "🎭 PsyPlay",          url: "psyplay" },
   { id: "myvercel",  name: "Server Utama",       url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
   { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}" },
   { id: "vidsrc-to", name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
@@ -124,6 +125,10 @@ export default function MoviePage() {
     if (activeServerId === "autoembed") {
       return `https://autoembed.cc/embed/movie/${movieId}`;
     }
+    // PsyPlay (autoembed.co)
+    if (activeServerId === "psyplay") {
+      return `https://autoembed.co/embed/movie/${movieId}`;
+    }
     const builtin = BUILTIN_LIST.find((b) => b.id === activeServerId);
     const custom = customServers.find((s) => s.id === activeServerId);
     let template = builtin ? builtin.url : custom?.url;
@@ -131,10 +136,8 @@ export default function MoviePage() {
     return template.replace("{type}", "movie").replace("{id}", String(movieId));
   };
 
-  const alwaysOn = ["vidplus", "peachify", "vidzee", "vixsrc", "2embed", "vidlink", "nontongo", "autoembed"];
   const enabledBuiltins = BUILTIN_LIST.filter(
-    (b) => alwaysOn.includes(b.id) ||
-           (builtinStates as BuiltinServerState)?.[b.id] !== false
+    (b) => (builtinStates as BuiltinServerState)?.[b.id] !== false
   );
   const activeCustom = (customServers as CustomServer[]).filter((s) => s.active);
   const allServers = [...enabledBuiltins, ...activeCustom];
@@ -280,6 +283,7 @@ export default function MoviePage() {
                   {s.id === "2embed"   && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
                   {s.id === "vidlink"  && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
                   {s.id === "autoembed" && <span className="ml-1 bg-[#16a34a] text-white text-[8px] px-1 rounded">FREE</span>}
+                  {s.id === "psyplay"   && <span className="ml-1 bg-[#7c3aed] text-white text-[8px] px-1 rounded">PSY</span>}
                   {s.id === "nontongo" && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
