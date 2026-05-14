@@ -70,13 +70,20 @@ function buildNontongoMovieUrl(id: number) { return `https://www.nontongo.win/em
 function buildNontongoTvUrl(id: number, s: number, e: number) { return `https://nontongo.win/embed/tv/${id}/${s}/${e}`; }
 function buildAutoEmbedMovieUrl(id: number) { return `https://autoembed.cc/embed/movie/${id}`; }
 function buildAutoEmbedTvUrl(id: number, s: number, e: number) { return `https://autoembed.cc/embed/tv/${id}?s=${s}&e=${e}`; }
+function buildPsyPlayMovieUrl(id: number) { return `https://autoembed.co/embed/movie/${id}`; }
+function buildPsyPlayTvUrl(id: number, s: number, e: number) { return `https://autoembed.co/embed/tv/${id}/${s}/${e}`; }
 function buildVidZeeMovieUrl(id: number) { return `https://player.vidzee.wtf/embed/movie/${id}`; }
 function buildVidZeeTvUrl(id: number, s: number, e: number) { return `https://player.vidzee.wtf/embed/tv/${id}/${s}/${e}`; }
 function buildVixSrcMovieUrl(id: number) { return `https://vixsrc.to/movie/${id}`; }
 function buildVixSrcTvUrl(id: number, s: number, e: number) { return `https://vixsrc.to/tv/${id}/${s}/${e}`; }
 function resolveCustomUrl(t: string, id: number, s: number, e: number, mt: string) {
-  return t.replace(/\{id\}/g, String(id)).replace(/\{s\}/g, String(s))
-    .replace(/\{e\}/g, String(e)).replace(/\{type\}/g, mt);
+  return t
+    .replace(/\{id\}/g, String(id))
+    .replace(/\{season\}/g, String(s))
+    .replace(/\{episode\}/g, String(e))
+    .replace(/\{s\}/g, String(s))
+    .replace(/\{e\}/g, String(e))
+    .replace(/\{type\}/g, mt);
 }
 
 async function setImmersive(on: boolean) {
@@ -461,6 +468,9 @@ export default function PlayerScreen() {
     if (active("autoembed")) list.push({ id: "autoembed", label: "AutoEmbed",
       url: mediaType === "movie" ? buildAutoEmbedMovieUrl(tmdbId) : buildAutoEmbedTvUrl(tmdbId, season, episode),
       badge: "FREE", badgeColor: "#16a34a", icon: "🌐" });
+    if (active("psyplay")) list.push({ id: "psyplay", label: "PsyPlay",
+      url: mediaType === "movie" ? buildPsyPlayMovieUrl(tmdbId) : buildPsyPlayTvUrl(tmdbId, season, episode),
+      badge: "PSY", badgeColor: "#7c3aed", icon: "🎭" });
     if (active("nontongo")) list.push({ id: "nontongo", label: "Nontongo",
       url: mediaType === "movie" ? buildNontongoMovieUrl(tmdbId) : buildNontongoTvUrl(tmdbId, season, episode),
       badge: "ALT", badgeColor: "#10b981", icon: "🎥" });
@@ -585,6 +595,8 @@ export default function PlayerScreen() {
       newUrl = buildVidLinkTvUrl(tmdbId, season, episode);
     } else if (activeServerId === "autoembed") {
       newUrl = buildAutoEmbedTvUrl(tmdbId, season, episode);
+    } else if (activeServerId === "psyplay") {
+      newUrl = buildPsyPlayTvUrl(tmdbId, season, episode);
     } else if (activeServerId === "nontongo") {
       newUrl = buildNontongoTvUrl(tmdbId, season, episode);
     } else if (activeServerId.startsWith("custom_")) {
