@@ -19,7 +19,8 @@ const GRAY = "#8a9bb0";
 const GREEN = "#00c853";
 
 const LOADING_TIMEOUT_MS = 12000;
-const OPENSUB_API = "https://opensubtitles.bymirrorx.eu.org/";
+const OPENSUB_API = "https://api.opensubtitles.com/api/v1/subtitles";
+const API_KEY = "oFj25oSNA9unEeotVQnX"; //
 
 interface EmbedRecord {
   id: string; title: string; url: string;
