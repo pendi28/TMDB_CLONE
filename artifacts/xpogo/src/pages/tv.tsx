@@ -19,6 +19,7 @@ const BUILTIN = [
   { id: "vidlink",    name: "🔗 VidLink",               url: "vidlink" },
   { id: "nontongo",   name: "🎥 Nontongo",              url: "nontongo" },
   { id: "autoembed",  name: "🌐 AutoEmbed",             url: "autoembed" },
+  { id: "psyplay",   name: "🎭 PsyPlay",              url: "psyplay" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)", url: "scraper" },
   { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
   { id: "vidsrc-to",  name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
@@ -148,6 +149,9 @@ export default function TvPage() {
     if (selectedServerId === "autoembed") {
       return `https://autoembed.cc/embed/tv/${tvId}?s=${selectedSeason}&e=${selectedEpisode}`;
     }
+    if (selectedServerId === "psyplay") {
+      return `https://autoembed.co/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
+    }
     // Auto Scraper
     if (selectedServerId === "auto-clean") {
       if (isScraping) return "";
@@ -165,11 +169,9 @@ export default function TvPage() {
       .replace("{e}", String(selectedEpisode));
   };
 
-  const alwaysEnabled = ["vidplus", "peachify", "vidzee", "vixsrc", "2embed", "vidlink", "nontongo", "autoembed", "auto-clean"];
   const allServers = [
     ...BUILTIN.filter(
-      (b) => alwaysEnabled.includes(b.id) ||
-             (builtinStates as BuiltinServerState)?.[b.id] !== false
+      (b) => (builtinStates as BuiltinServerState)?.[b.id] !== false
     ),
     ...(customServers as CustomServer[]).filter((s) => s.active),
   ];
@@ -297,6 +299,7 @@ export default function TvPage() {
                   {s.id === "2embed"   && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
                   {s.id === "vidlink"  && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
                   {s.id === "autoembed" && <span className="ml-1 bg-[#16a34a] text-white text-[8px] px-1 rounded">FREE</span>}
+                  {s.id === "psyplay"   && <span className="ml-1 bg-[#7c3aed] text-white text-[8px] px-1 rounded">PSY</span>}
                   {s.id === "nontongo" && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
