@@ -124,6 +124,46 @@ const ALL_BUILTIN: BuiltinDef[] = [
     badge: "FREE", badgeColor: "#6b7280",
     note: "Alternatif VidSrc",
   },
+  {
+    id: "2embed",
+    name: "📺 2Embed",
+    movieUrl: "https://www.2embed.cc/embed/{id}",
+    tvUrl:    "https://www.2embed.cc/embedtv/{id}&s={s}&e={e}",
+    badge: "HD", badgeColor: "#0ea5e9",
+    note: "Server 2Embed",
+  },
+  {
+    id: "vidlink",
+    name: "🔗 VidLink",
+    movieUrl: "https://vidlink.pro/movie/{id}",
+    tvUrl:    "https://vidlink.pro/tv/{id}/{s}/{e}",
+    badge: "NEW", badgeColor: "#f59e0b",
+    note: "VidLink player",
+  },
+  {
+    id: "nontongo",
+    name: "🎥 Nontongo",
+    movieUrl: "https://www.nontongo.win/embed/movie/{id}",
+    tvUrl:    "https://nontongo.win/embed/tv/{id}/{s}/{e}",
+    badge: "ALT", badgeColor: "#10b981",
+    note: "Server Nontongo",
+  },
+  {
+    id: "autoembed",
+    name: "🌐 AutoEmbed",
+    movieUrl: "https://autoembed.cc/embed/movie/{id}",
+    tvUrl:    "https://autoembed.cc/embed/tv/{id}?s={s}&e={e}",
+    badge: "FREE", badgeColor: "#16a34a",
+    note: "AutoEmbed gratis",
+  },
+  {
+    id: "psyplay",
+    name: "🎭 PsyPlay",
+    movieUrl: "https://autoembed.co/embed/movie/{id}",
+    tvUrl:    "https://autoembed.co/embed/tv/{id}/{s}/{e}",
+    badge: "PSY", badgeColor: "#7c3aed",
+    note: "PsyPlay via autoembed.co",
+  },
 ];
 
 const SAMPLE_MOVIE_ID = "550";
