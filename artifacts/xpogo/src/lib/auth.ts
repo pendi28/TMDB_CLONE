@@ -15,8 +15,9 @@ export function isLoggedIn(): boolean {
   return !!getToken();
 }
 
-/* ── write-token (raw password = Firebase DB secret) stored in sessionStorage only ──
-   Never included in the JS bundle. Entered at login time, cleared when tab closes. */
+/* ── write-token (Firebase DB Secret) stored in sessionStorage only ──
+   Entered at login time. Cleared when tab/session closes.
+   Never included in the JS bundle — no build-time secret needed. */
 export function getWriteToken(): string {
   return sessionStorage.getItem(WRITE_KEY) ?? "";
 }
