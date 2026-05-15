@@ -137,7 +137,7 @@ function CommentItem({ comment, mediaType, tmdbId, onLiked }: {
   );
 }
 
-export default function CommentsSection({ mediaType, tmdbId }: { mediaType: "movie" | "tv"; tmdbId: number }) {
+export default function CommentsSection({ type: mediaType, tmdbId }: { type: "movie" | "tv"; tmdbId: number }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
