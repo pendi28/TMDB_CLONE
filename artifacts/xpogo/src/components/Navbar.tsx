@@ -7,6 +7,8 @@ const NAV_LINKS = [
   { label: "MOVIE", href: "/movies" },
   { label: "DONGHUA", href: "/donghua" },
   { label: "TV SHOW", href: "/tv" },
+  { label: "ANIME",     href: "/anime" },   // ✅ NEW
+  { label: "MANGA",     href: "/manga" },   // ✅ NEW
   { label: "FAVORIT", href: "/search" },
   { label: "COMMUNITY", href: "/people" },
 ];
