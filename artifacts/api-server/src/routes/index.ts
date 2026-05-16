@@ -9,12 +9,14 @@ import customMoviesRouter from "./custom-movies.js";
 import messagesRouter from "./messages.js";
 import commentsRouter from "./comments.js";
 import syncRouter from "./sync.js";
+import anilistRouter from "./anilist.js"; // ✅ NEW
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(adminRouter);
 router.use(tmdbRouter);
+router.use(anilistRouter); // ✅ NEW
 router.use(settingsRouter);
 router.use(adsRouter);
 router.use(embedsRouter);
