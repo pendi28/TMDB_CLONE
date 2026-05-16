@@ -15,7 +15,9 @@ import Navbar from "@/components/Navbar";
 import AdBanner from "@/components/AdBanner";
 import ContentRow from "@/components/ContentRow";
 import MovieCard from "@/components/MovieCard";
-
+import AnimePage from "@/pages/anime";
+import AnimeDetailPage from "@/pages/anime-detail";
+import { MangaListPage, MangaDetailPage } from "@/pages/manga";
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
@@ -211,6 +213,11 @@ function AppContent() {
           <Navbar />
           <main>
             <Switch>
+              
+              <Route path="/anime" component={AnimePage} />
+              <Route path="/anime/:id" component={AnimeDetailPage} />
+              <Route path="/manga" component={MangaListPage} />
+              <Route path="/manga/:id" component={MangaDetailPage} />
               <Route path="/" component={HomePage} />
               <Route path="/movie/:id" component={MoviePage} />
               <Route path="/tv/:id" component={TvPage} />
