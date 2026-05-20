@@ -76,6 +76,15 @@ function buildVidZeeMovieUrl(id: number) { return `https://player.vidzee.wtf/emb
 function buildVidZeeTvUrl(id: number, s: number, e: number) { return `https://player.vidzee.wtf/embed/tv/${id}/${s}/${e}`; }
 function buildVixSrcMovieUrl(id: number) { return `https://vixsrc.to/movie/${id}`; }
 function buildVixSrcTvUrl(id: number, s: number, e: number) { return `https://vixsrc.to/tv/${id}/${s}/${e}`; }
+// ── PlusHub sources ────────────────────────────────────────────────
+function buildAutoEmbedAppMovieUrl(id: number) { return `https://player.autoembed.app/embed/movie/${id}`; }
+function buildAutoEmbedAppTvUrl(id: number, s: number, e: number) { return `https://player.autoembed.app/embed/tv/${id}/${s}/${e}`; }
+function buildBraflixMovieUrl(id: number) { return `https://braflix.me/embed/movie/${id}`; }
+function buildBraflixTvUrl(id: number, s: number, e: number) { return `https://braflix.me/embed/tv/${id}/${s}/${e}`; }
+function buildCineHdMovieUrl(id: number) { return `https://cinehd.app/embed/movie/${id}`; }
+function buildCineHdTvUrl(id: number, s: number, e: number) { return `https://cinehd.app/embed/tv/${id}/${s}/${e}`; }
+function buildNxshaMovieUrl(id: number) { return `https://nxsha.app/embed/movie/${id}`; }
+function buildNxshaTvUrl(id: number, s: number, e: number) { return `https://nxsha.app/embed/tv/${id}/${s}/${e}`; }
 function resolveCustomUrl(t: string, id: number, s: number, e: number, mt: string) {
   return t
     .replace(/\{id\}/g, String(id))
@@ -474,6 +483,18 @@ export default function PlayerScreen() {
     if (active("nontongo")) list.push({ id: "nontongo", label: "Nontongo",
       url: mediaType === "movie" ? buildNontongoMovieUrl(tmdbId) : buildNontongoTvUrl(tmdbId, season, episode),
       badge: "ALT", badgeColor: "#10b981", icon: "🎥" });
+    if (active("autoembedapp")) list.push({ id: "autoembedapp", label: "AutoEmbed App",
+      url: mediaType === "movie" ? buildAutoEmbedAppMovieUrl(tmdbId) : buildAutoEmbedAppTvUrl(tmdbId, season, episode),
+      badge: "HUB", badgeColor: "#e11d48", icon: "🌟" });
+    if (active("braflix")) list.push({ id: "braflix", label: "Braflix",
+      url: mediaType === "movie" ? buildBraflixMovieUrl(tmdbId) : buildBraflixTvUrl(tmdbId, season, episode),
+      badge: "HUB", badgeColor: "#0284c7", icon: "🎞️" });
+    if (active("cinehd")) list.push({ id: "cinehd", label: "CineHD",
+      url: mediaType === "movie" ? buildCineHdMovieUrl(tmdbId) : buildCineHdTvUrl(tmdbId, season, episode),
+      badge: "HUB", badgeColor: "#d97706", icon: "🎦" });
+    if (active("nxsha")) list.push({ id: "nxsha", label: "NxSha",
+      url: mediaType === "movie" ? buildNxshaMovieUrl(tmdbId) : buildNxshaTvUrl(tmdbId, season, episode),
+      badge: "HUB", badgeColor: "#7c3aed", icon: "🔮" });
 
     list.push({ id: "scraper", label: "🚀 Auto Scraper (Clean)",
       url: "__scraper__", badge: "M3U8", badgeColor: GREEN, icon: "🚀",
