@@ -12,8 +12,7 @@
       },
       "env": {
         "EXPO_PUBLIC_TMDB_KEY": "$EXPO_PUBLIC_TMDB_KEY",
-        "EXPO_PUBLIC_FIREBASE_SECRET": "$EXPO_PUBLIC_FIREBASE_SECRET",
-        "EXPO_PUBLIC_WEB_DOMAIN": "apps-tmdb.web.app"
+        "EXPO_PUBLIC_FIREBASE_SECRET": "$EXPO_PUBLIC_FIREBASE_SECRET"
       }
     },
     "production": {
@@ -21,7 +20,11 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "ios": {}
+      "ios": {},
+      "env": {
+        "EXPO_PUBLIC_TMDB_KEY": "$EXPO_PUBLIC_TMDB_KEY",
+        "EXPO_PUBLIC_FIREBASE_SECRET": "$EXPO_PUBLIC_FIREBASE_SECRET"
+      }
     }
   },
   "submit": {
