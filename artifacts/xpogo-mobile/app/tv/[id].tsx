@@ -54,19 +54,6 @@ function buildAutoEmbedUrl(tmdbId: number, s: number, ep: number) {
 function buildZxcUrl(tmdbId: number, serverNum: number, s: number, ep: number) {
   return `https://zxcstream.xyz/player/tv/${tmdbId}?server=${serverNum}&color=E50914&autoplay=true&back=true&season=${s}&episode=${ep}`;
 }
-// ── PlusHub sources ──────────────────────────────────────────────────
-function buildAutoEmbedAppUrl(tmdbId: number, s: number, ep: number) {
-  return `https://player.autoembed.app/embed/tv/${tmdbId}/${s}/${ep}`;
-}
-function buildBraflixUrl(tmdbId: number, s: number, ep: number) {
-  return `https://braflix.me/embed/tv/${tmdbId}/${s}/${ep}`;
-}
-function buildCineHdUrl(tmdbId: number, s: number, ep: number) {
-  return `https://cinehd.app/embed/tv/${tmdbId}/${s}/${ep}`;
-}
-function buildNxshaUrl(tmdbId: number, s: number, ep: number) {
-  return `https://nxsha.app/embed/tv/${tmdbId}/${s}/${ep}`;
-}
 
 // ── Helper: resolve AniList → TMDB ID via title search ───────────────
 async function resolveAnilistToTmdb(anilistId: number): Promise<{
@@ -388,14 +375,6 @@ export default function TvDetailScreen() {
           url: buildZxcUrl(t, 2, s, e),    badge: "HD",   badgeColor: "#3b82f6" },
         { id: "zxc3",      label: "ZxcStream S3",      icon: "🖥️",
           url: buildZxcUrl(t, 3, s, e),    badge: "ALT",  badgeColor: "#8b5cf6" },
-        { id: "autoembedapp", label: "AutoEmbed App",  icon: "🌟",
-          url: buildAutoEmbedAppUrl(t, s, e), badge: "HUB", badgeColor: "#e11d48" },
-        { id: "braflix",   label: "Braflix",            icon: "🎞️",
-          url: buildBraflixUrl(t, s, e),   badge: "HUB",  badgeColor: "#0284c7" },
-        { id: "cinehd",    label: "CineHD",             icon: "🎦",
-          url: buildCineHdUrl(t, s, e),    badge: "HUB",  badgeColor: "#d97706" },
-        { id: "nxsha",     label: "NxSha",              icon: "🔮",
-          url: buildNxshaUrl(t, s, e),     badge: "HUB",  badgeColor: "#7c3aed" },
       );
     }
 
