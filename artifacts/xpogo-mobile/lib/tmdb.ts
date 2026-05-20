@@ -65,8 +65,14 @@ export const tmdb = {
     tmdbFetch<any>("/search/multi", { query, page }),
   tvDetail: (id: number) =>
     tmdbFetch<any>(`/tv/${id}`, {
-      append_to_response: "credits,similar,seasons,videos",
+      append_to_response: "credits,similar,seasons,videos,next_episode_to_air,last_episode_to_air",
     }),
+  tvSeasonDetail: (id: number, season: number) =>
+    tmdbFetch<any>(`/tv/${id}/season/${season}`),
+  tvOnAir: (page = 1) =>
+    tmdbFetch<any>("/tv/on_the_air", { page }),
+  tvAiringToday: (page = 1) =>
+    tmdbFetch<any>("/tv/airing_today", { page }),
   findByImdb: (imdbId: string) =>
     tmdbFetch<any>(`/find/${imdbId}`, { external_source: "imdb_id" }),
 };
