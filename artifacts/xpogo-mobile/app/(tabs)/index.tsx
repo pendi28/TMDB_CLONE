@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, Image,
   StyleSheet, ActivityIndicator, Dimensions, StatusBar,
-  Animated, BackHandler, Modal, TextInput, FlatList,
-  TouchableWithoutFeedback, Alert, AppState, RefreshControl,
+  Modal, TextInput, FlatList, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { tmdb } from "@/lib/tmdb";
-import { fb } from "@/lib/firebase";
+import { anilist, AniItem } from "@/lib/anilist";
 
 const IMG_W = "https://image.tmdb.org/t/p/w500";
 const IMG_B = "https://image.tmdb.org/t/p/w780";
@@ -17,46 +16,75 @@ const CARD_W = (width - 56) / 3.2;
 const BG = "#0d0000";
 const CARD_BG = "#1a0000";
 const RED = "#E50914";
+const PURPLE = "#7c3aed";
 const GRAY = "#8a9bb0";
 
-const GENRES = ["Aksi", "Komedi", "Drama", "Horor", "Fiksi Ilmiah", "Animasi", "Thriller"];
-const GENRE_MAP: Record<string, { movieId?: number; tvId?: number }> = {
-  "Aksi":         { movieId: 28,  tvId: 10759 },
-  "Komedi":       { movieId: 35,  tvId: 35    },
-  "Drama":        { movieId: 18,  tvId: 18    },
-  "Horor":        { movieId: 27              },
-  "Fiksi Ilmiah": { movieId: 878, tvId: 10765 },
-  "Animasi":      { movieId: 16,  tvId: 16   },
-  "Thriller":     { movieId: 53              },
-};
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
+function isChinese(item: AniItem) {
+  return item.countryOfOrigin === "CN" || item.countryOfOrigin === "TW";
+}
+
+function aniTitle(item: AniItem) {
+  return item.title.english ?? item.title.romaji;
+}
+
+function aniScore(item: AniItem) {
+  if (!item.averageScore) return undefined;
+  return item.averageScore / 10;
+}
+
+// Convert AniList item to a format usable in TMDB-style components
 interface MediaItem {
-  id: number; title?: string; name?: string;
-  poster_path?: string | null; backdrop_path?: string | null;
-  vote_average?: number; media_type?: string; overview?: string;
+  id: number;
+  title?: string;
+  name?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  vote_average?: number;
+  media_type?: string;
+  overview?: string;
   original_language?: string;
-}
-interface CustomMovie {
-  id: string; title: string; posterUrl?: string; backdropUrl?: string;
-  type: "movie" | "series"; tmdbId?: number; description?: string;
+  _source?: "tmdb" | "anilist";
+  _aniPoster?: string;
+  _aniBanner?: string;
 }
 
-function LanguageBadge({ lang }: { lang?: string }) {
-  if (!lang) return null;
-  const map: Record<string, { label: string; color: string }> = {
-    zh: { label: "DONGHUA", color: RED },
-    ja: { label: "ANIME",   color: "#7c3aed" },
-    ko: { label: "K-DRAMA", color: "#0369a1" },
-    th: { label: "THAI",    color: "#d97706" },
-    id: { label: "INDO",    color: "#059669" },
-    hi: { label: "HINDI",   color: "#dc2626" },
-    tl: { label: "PH",      color: "#2563eb" },
+function fromAni(item: AniItem): MediaItem {
+  return {
+    id: item.id,
+    name: aniTitle(item),
+    vote_average: aniScore(item),
+    overview: item.description?.replace(/<[^>]*>/g, ""),
+    original_language: isChinese(item) ? "zh" : "ja",
+    _source: "anilist",
+    _aniPoster: item.coverImage.large,
+    _aniBanner: item.bannerImage,
   };
-  const m = map[lang];
-  if (!m) return null;
+}
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+
+function TypeBadge({ item }: { item: MediaItem }) {
+  const lang = item.original_language;
+  if (lang === "zh") return (
+    <View style={[S.langBadge, { backgroundColor: RED }]}>
+      <Text style={S.langBadgeText}>DONGHUA</Text>
+    </View>
+  );
+  if (lang === "ja") return (
+    <View style={[S.langBadge, { backgroundColor: PURPLE }]}>
+      <Text style={S.langBadgeText}>ANIME</Text>
+    </View>
+  );
+  return null;
+}
+
+function SourceBadge({ source }: { source?: "tmdb" | "anilist" }) {
+  if (source !== "anilist") return null;
   return (
-    <View style={[S.langBadge, { backgroundColor: m.color }]}>
-      <Text style={S.langBadgeText}>{m.label}</Text>
+    <View style={S.sourceBadge}>
+      <Text style={S.sourceBadgeText}>AL</Text>
     </View>
   );
 }
@@ -72,32 +100,45 @@ function RatingBadge({ score }: { score?: number }) {
   );
 }
 
-function MediaCard({ item, type }: { item: MediaItem; type: "movie" | "tv" }) {
+// ── Card ─────────────────────────────────────────────────────────────────────
+
+function MediaCard({ item }: { item: MediaItem }) {
   const router = useRouter();
-  const mt = (item.media_type as "movie" | "tv") ?? type;
+  const isAni = item._source === "anilist";
+  const posterUri = isAni ? item._aniPoster : (item.poster_path ? `${IMG_W}${item.poster_path}` : null);
+
+  function onPress() {
+    if (isAni) {
+      router.push(`/tv/${item.id}?source=anilist` as never);
+    } else {
+      router.push(`/tv/${item.id}` as never);
+    }
+  }
+
   return (
-    <TouchableOpacity style={S.card}
-      onPress={() => router.push((mt === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`) as never)}
-      activeOpacity={0.85}>
+    <TouchableOpacity style={S.card} onPress={onPress} activeOpacity={0.85}>
       <View style={S.posterWrap}>
-        {item.poster_path
-          ? <Image source={{ uri: `${IMG_W}${item.poster_path}` }} style={S.poster} />
+        {posterUri
+          ? <Image source={{ uri: posterUri }} style={S.poster} />
           : <View style={[S.poster, S.noImg]}>
               <Text style={{ color: "#444", fontSize: 9, textAlign: "center", padding: 4 }}>
-                {item.title ?? item.name}
+                {item.name ?? item.title}
               </Text>
             </View>
         }
         <RatingBadge score={item.vote_average} />
-        <LanguageBadge lang={item.original_language} />
+        <TypeBadge item={item} />
+        <SourceBadge source={item._source} />
       </View>
-      <Text style={S.cardTitle} numberOfLines={2}>{item.title ?? item.name}</Text>
+      <Text style={S.cardTitle} numberOfLines={2}>{item.name ?? item.title}</Text>
     </TouchableOpacity>
   );
 }
 
-function SectionRow({ title, items, type, badge, badgeColor }: {
-  title: string; items: MediaItem[]; type: "movie" | "tv"; badge?: string; badgeColor?: string;
+// ── Section Row ──────────────────────────────────────────────────────────────
+
+function SectionRow({ title, items, badge, badgeColor }: {
+  title: string; items: MediaItem[]; badge?: string; badgeColor?: string;
 }) {
   if (!items.length) return null;
   return (
@@ -112,110 +153,99 @@ function SectionRow({ title, items, type, badge, badgeColor }: {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-        {items.map(item => <MediaCard key={item.id} item={item} type={type} />)}
+        {items.map(item => <MediaCard key={`${item._source ?? "t"}-${item.id}`} item={item} />)}
       </ScrollView>
     </View>
   );
 }
 
-function HeroBanner({ item, onWatch, onInfo }: {
-  item: MediaItem; onWatch: () => void; onInfo: () => void;
-}) {
-  const pct = item.vote_average ? Math.round(item.vote_average * 10) : 0;
+// ── Hero Banner ──────────────────────────────────────────────────────────────
+
+function HeroBanner({ item, onPress }: { item: MediaItem; onPress: () => void }) {
+  const isAni = item._source === "anilist";
+  const imgUri = isAni
+    ? (item._aniBanner ?? item._aniPoster)
+    : (item.backdrop_path ? `${IMG_B}${item.backdrop_path}` : null);
+
   return (
-    <View style={S.hero}>
-      {item.backdrop_path
-        ? <Image source={{ uri: `${IMG_B}${item.backdrop_path}` }} style={S.heroImg} resizeMode="cover" />
+    <TouchableOpacity style={S.hero} onPress={onPress} activeOpacity={0.9}>
+      {imgUri
+        ? <Image source={{ uri: imgUri }} style={S.heroImg} resizeMode="cover" />
         : <View style={S.heroImgPlaceholder} />
       }
       <View style={S.heroGrad} />
       <View style={S.heroContent}>
-        <LanguageBadge lang={item.original_language} />
-        <Text style={S.heroTitle} numberOfLines={2}>{item.title ?? item.name}</Text>
-        {item.overview ? <Text style={S.heroOverview} numberOfLines={2}>{item.overview}</Text> : null}
+        <TypeBadge item={item} />
+        <Text style={S.heroTitle} numberOfLines={2}>{item.name ?? item.title}</Text>
+        {item.overview
+          ? <Text style={S.heroOverview} numberOfLines={2}>{item.overview}</Text>
+          : null
+        }
         <View style={S.heroBtns}>
-          <TouchableOpacity style={S.btnWatch} onPress={onWatch} activeOpacity={0.85}>
+          <TouchableOpacity style={S.btnWatch} onPress={onPress} activeOpacity={0.85}>
             <Text style={S.btnWatchText}>▶  Tonton</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={S.btnInfo} onPress={onInfo} activeOpacity={0.85}>
+          <TouchableOpacity style={S.btnInfo} onPress={onPress} activeOpacity={0.85}>
             <Text style={S.btnInfoText}>ℹ  Info</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
+
+// ── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [trendingTab, setTrendingTab] = useState<"day" | "week">("week");
-  const [activeGenre, setActiveGenre] = useState<string | null>(null);
-  const [customMovies, setCustomMovies] = useState<CustomMovie[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchModal, setSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const [trendWeek, setTrendWeek] = useState<any>(null);
-  const [trendDay, setTrendDay] = useState<any>(null);
-  const [moviesData, setMoviesData] = useState<any>(null);
-  const [topMoviesData, setTopMoviesData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // AniList data
+  const [aniTrending, setAniTrending] = useState<MediaItem[]>([]);
+  const [aniSeasonal, setAniSeasonal] = useState<MediaItem[]>([]);
+  const [aniTopRated, setAniTopRated] = useState<MediaItem[]>([]);
+  const [aniAiring, setAniAiring] = useState<MediaItem[]>([]);
+  const [aniDonghua, setAniDonghua] = useState<MediaItem[]>([]);
+  const [aniDonghuaNew, setAniDonghuaNew] = useState<MediaItem[]>([]);
 
-  // Donghua
-  const [donghuaList, setDonghuaList] = useState<MediaItem[]>([]);
-  const [donghuaNewList, setDonghuaNewList] = useState<MediaItem[]>([]);
-  const [donghuaTopList, setDonghuaTopList] = useState<MediaItem[]>([]);
-  // Anime
-  const [animeList, setAnimeList] = useState<MediaItem[]>([]);
-  const [animeNewList, setAnimeNewList] = useState<MediaItem[]>([]);
-  // Drama Asia
-  const [kdramaList, setKdramaList] = useState<MediaItem[]>([]);
-  const [kdramaNewList, setKdramaNewList] = useState<MediaItem[]>([]);
-  const [cdramaList, setCdramaList] = useState<MediaItem[]>([]);
-  const [thaiDramaList, setThaiDramaList] = useState<MediaItem[]>([]);
-  const [indoDramaList, setIndoDramaList] = useState<MediaItem[]>([]);
-  const [taiwanDramaList, setTaiwanDramaList] = useState<MediaItem[]>([]);
-  const [japanDramaList, setJapanDramaList] = useState<MediaItem[]>([]);
-  // Film Asia & Lokal
-  const [filmKoreaList, setFilmKoreaList] = useState<MediaItem[]>([]);
-  const [filmChinaList, setFilmChinaList] = useState<MediaItem[]>([]);
-  const [filmJepangList, setFilmJepangList] = useState<MediaItem[]>([]);
-  const [filmThaiList, setFilmThaiList] = useState<MediaItem[]>([]);
-  const [bollywoodList, setBollywoodList] = useState<MediaItem[]>([]);
-  const [filmIndoList, setFilmIndoList] = useState<MediaItem[]>([]);
+  // TMDB data
+  const [tmdbDonghua, setTmdbDonghua] = useState<MediaItem[]>([]);
+  const [tmdbDonghuaNew, setTmdbDonghuaNew] = useState<MediaItem[]>([]);
+  const [tmdbDonghuaTop, setTmdbDonghuaTop] = useState<MediaItem[]>([]);
+  const [tmdbAnime, setTmdbAnime] = useState<MediaItem[]>([]);
+  const [tmdbAnimeNew, setTmdbAnimeNew] = useState<MediaItem[]>([]);
+
+  const hero: MediaItem | null = aniTrending[0] ?? aniAiring[0] ?? null;
 
   const loadAll = useCallback(async () => {
-    return Promise.all([
-      tmdb.trending("all", "week").then(setTrendWeek).catch(() => {}),
-      tmdb.trending("all", "day").then(setTrendDay).catch(() => {}),
-      tmdb.popularMovies().then(setMoviesData).catch(() => {}),
-      tmdb.topMovies().then(setTopMoviesData).catch(() => {}),
-      // Donghua
-      tmdb.donghua().then(d => setDonghuaList(d.results ?? [])).catch(() => {}),
-      tmdb.donghuaNew().then(d => setDonghuaNewList(d.results ?? [])).catch(() => {}),
-      tmdb.donghuaTopRated().then(d => setDonghuaTopList(d.results ?? [])).catch(() => {}),
-      // Anime
-      tmdb.anime().then(d => setAnimeList(d.results ?? [])).catch(() => {}),
-      tmdb.animeNew().then(d => setAnimeNewList(d.results ?? [])).catch(() => {}),
-      // Drama Asia
-      tmdb.dramaKorea().then(d => setKdramaList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaKoreaNew().then(d => setKdramaNewList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaChina().then(d => setCdramaList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaThailand().then(d => setThaiDramaList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaIndonesia().then(d => setIndoDramaList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaTaiwan().then(d => setTaiwanDramaList(d.results ?? [])).catch(() => {}),
-      tmdb.dramaJapan().then(d => setJapanDramaList(d.results ?? [])).catch(() => {}),
-      // Film Asia & Lokal
-      tmdb.filmKorea().then(d => setFilmKoreaList(d.results ?? [])).catch(() => {}),
-      tmdb.filmChina().then(d => setFilmChinaList(d.results ?? [])).catch(() => {}),
-      tmdb.filmJepang().then(d => setFilmJepangList(d.results ?? [])).catch(() => {}),
-      tmdb.filmThailand().then(d => setFilmThaiList(d.results ?? [])).catch(() => {}),
-      tmdb.bollywood().then(d => setBollywoodList(d.results ?? [])).catch(() => {}),
-      tmdb.filmIndonesia().then(d => setFilmIndoList(d.results ?? [])).catch(() => {}),
+    // Batch 1 — AniList (paling penting)
+    await Promise.all([
+      anilist.trending().then(d => setAniTrending((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+      anilist.seasonal().then(d => setAniSeasonal((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+      anilist.airing().then(d => setAniAiring((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+    ]);
+
+    // Batch 2 — AniList lanjutan
+    await Promise.all([
+      anilist.topRated().then(d => setAniTopRated((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+      anilist.donghua().then(d => setAniDonghua((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+      anilist.donghuaNew().then(d => setAniDonghuaNew((d?.Page?.media ?? []).map(fromAni))).catch(() => {}),
+    ]);
+
+    // Batch 3 — TMDB (cadangan / pelengkap)
+    await Promise.all([
+      tmdb.donghua().then(d => setTmdbDonghua((d.results ?? []).map((x: any) => ({ ...x, _source: "tmdb" as const })))).catch(() => {}),
+      tmdb.donghuaNew().then(d => setTmdbDonghuaNew((d.results ?? []).map((x: any) => ({ ...x, _source: "tmdb" as const })))).catch(() => {}),
+      tmdb.donghuaTopRated().then(d => setTmdbDonghuaTop((d.results ?? []).map((x: any) => ({ ...x, _source: "tmdb" as const })))).catch(() => {}),
+      tmdb.anime().then(d => setTmdbAnime((d.results ?? []).map((x: any) => ({ ...x, _source: "tmdb" as const })))).catch(() => {}),
+      tmdb.animeNew().then(d => setTmdbAnimeNew((d.results ?? []).map((x: any) => ({ ...x, _source: "tmdb" as const })))).catch(() => {}),
     ]);
   }, []);
 
@@ -224,49 +254,55 @@ export default function HomeScreen() {
     loadAll().finally(() => setIsLoading(false));
   }, []);
 
-  const loadFirebaseData = useCallback(async () => {
-    try {
-      const d = await fb.getCustomMovies();
-      setCustomMovies(d as CustomMovie[]);
-    } catch {}
-  }, []);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadFirebaseData(), loadAll()]);
+    await loadAll();
     setRefreshing(false);
-  }, [loadAll, loadFirebaseData]);
-
-  useEffect(() => { loadFirebaseData(); }, []);
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", s => { if (s === "active") loadFirebaseData(); });
-    return () => sub.remove();
-  }, [loadFirebaseData]);
-  useEffect(() => {
-    const id = setInterval(loadFirebaseData, 30_000);
-    return () => clearInterval(id);
-  }, [loadFirebaseData]);
+  }, [loadAll]);
 
   const doSearch = async (q: string) => {
     if (!q.trim()) { setSearchResults([]); return; }
     setSearchLoading(true);
     try {
-      const data = await tmdb.search(q);
-      const items = (data.results ?? [])
-        .filter((x: any) => x.media_type === "movie" || x.media_type === "tv")
-        .slice(0, 20);
-      setSearchResults(items);
-    } catch { setSearchResults([]); }
-    finally { setSearchLoading(false); }
+      const [tmdbRes, aniRes] = await Promise.all([
+        tmdb.search(q).catch(() => ({ results: [] })),
+        anilist.search(q).catch(() => ({ Page: { media: [] } })),
+      ]);
+      const tmdbItems: MediaItem[] = (tmdbRes.results ?? [])
+        .filter((x: any) => x.media_type === "tv")
+        .filter((x: any) => ["ja", "zh"].includes(x.original_language))
+        .slice(0, 10)
+        .map((x: any) => ({ ...x, _source: "tmdb" as const }));
+      const aniItems: MediaItem[] = (aniRes?.Page?.media ?? []).map(fromAni);
+      setSearchResults([...aniItems, ...tmdbItems].slice(0, 20));
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
-  const trendResults   = (trendingTab === "day" ? trendDay : trendWeek)?.results as MediaItem[] ?? [];
-  const popularMovies  = moviesData?.results as MediaItem[] ?? [];
-  const heroItem       = trendResults[0] ?? popularMovies[0];
+  function navigateTo(item: MediaItem) {
+    if (item._source === "anilist") {
+      router.push(`/tv/${item.id}?source=anilist` as never);
+    } else {
+      router.push(`/tv/${item.id}` as never);
+    }
+  }
+
+  // Merge AniList + TMDB donghua (dedupe by name)
+  const allDonghua = [...aniDonghua, ...tmdbDonghua.filter(t =>
+    !aniDonghua.some(a => a.name?.toLowerCase() === (t.name ?? "").toLowerCase())
+  )];
+  const allAnime = [...aniTrending.filter(a => a.original_language === "ja"), ...tmdbAnime.filter(t =>
+    !aniTrending.some(a => a.name?.toLowerCase() === (t.name ?? "").toLowerCase())
+  )];
 
   return (
     <View style={S.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* Header */}
       <View style={[S.headerSafe, { paddingTop: insets.top }]}>
         <View style={S.header}>
           <Text style={S.logoText}>Xpo<Text style={{ color: RED }}>Go</Text></Text>
@@ -282,86 +318,85 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={RED} colors={[RED]} />}
       >
-        {heroItem && !isLoading && (
-          <HeroBanner
-            item={heroItem}
-            onWatch={() => router.push((heroItem.media_type === "tv" ? `/tv/${heroItem.id}` : `/movie/${heroItem.id}`) as never)}
-            onInfo={() => router.push((heroItem.media_type === "tv" ? `/tv/${heroItem.id}` : `/movie/${heroItem.id}`) as never)}
-          />
+        {/* Hero */}
+        {hero && !isLoading && (
+          <HeroBanner item={hero} onPress={() => navigateTo(hero)} />
         )}
 
         {isLoading
           ? <ActivityIndicator color={RED} size="large" style={{ marginTop: 60 }} />
           : <>
-              {/* Genre Chips */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={S.genres}>
-                {GENRES.map(g => (
-                  <TouchableOpacity key={g}
-                    style={[S.genreChip, activeGenre === g && S.genreChipActive]}
-                    onPress={() => setActiveGenre(activeGenre === g ? null : g)}
-                    activeOpacity={0.8}>
-                    <Text style={[S.genreText, activeGenre === g && S.genreTextActive]}>{g}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {/* AniList Sections */}
+              <SectionRow
+                title="🔥 Trending Anime (AniList)"
+                items={aniTrending.filter(a => a.original_language === "ja")}
+                badge="ANILIST"
+                badgeColor={PURPLE}
+              />
+              <SectionRow
+                title="📅 Tayang Musim Ini"
+                items={aniSeasonal}
+                badge="SEASONAL"
+                badgeColor="#0369a1"
+              />
+              <SectionRow
+                title="📡 Sedang Tayang"
+                items={aniAiring}
+                badge="ON AIR"
+                badgeColor="#059669"
+              />
+              <SectionRow
+                title="⭐ Top Rating Sepanjang Masa"
+                items={aniTopRated}
+                badge="TOP"
+                badgeColor="#f59e0b"
+              />
 
-              {/* ── Donghua ─────────────────────────────────── */}
-              <SectionRow title="🆕 Donghua Rilis Terbaru" items={donghuaNewList} type="tv" badge="NEW 2025" />
-              <SectionRow title="🐉 Top Donghua Terpopuler" items={donghuaList} type="tv" badge="DONGHUA" />
-              <SectionRow title="⭐ Donghua Top Rating" items={donghuaTopList} type="tv" badge="TOP" badgeColor="#f59e0b" />
+              {/* Donghua Sections */}
+              <SectionRow
+                title="🆕 Donghua Terbaru (AniList)"
+                items={aniDonghuaNew}
+                badge="NEW"
+                badgeColor={RED}
+              />
+              <SectionRow
+                title="🐉 Donghua Populer (AniList)"
+                items={aniDonghua}
+                badge="DONGHUA"
+                badgeColor={RED}
+              />
+              <SectionRow
+                title="🐉 Donghua Populer (TMDB)"
+                items={tmdbDonghua}
+                badge="TMDB"
+                badgeColor="#374151"
+              />
+              <SectionRow
+                title="🆕 Donghua Baru (TMDB)"
+                items={tmdbDonghuaNew}
+                badge="NEW"
+                badgeColor="#374151"
+              />
+              <SectionRow
+                title="⭐ Donghua Rating Tertinggi"
+                items={tmdbDonghuaTop}
+                badge="TOP"
+                badgeColor="#f59e0b"
+              />
 
-              {/* ── Anime ────────────────────────────────────── */}
-              <SectionRow title="🆕 Update Anime Terbaru" items={animeNewList} type="tv" badge="NEW" />
-              <SectionRow title="⛩️ Anime Jepang Populer" items={animeList} type="tv" badge="ANIME" badgeColor="#7c3aed" />
-
-              {/* ── Drama Korea ───────────────────────────────── */}
-              <SectionRow title="🆕 Drama Korea Terbaru" items={kdramaNewList} type="tv" badge="NEW" />
-              <SectionRow title="🇰🇷 Drama Korea Populer" items={kdramaList} type="tv" badge="K-DRAMA" badgeColor="#0369a1" />
-
-              {/* ── Drama China & Taiwan ──────────────────────── */}
-              <SectionRow title="🇨🇳 Chinese Drama" items={cdramaList} type="tv" badge="C-DRAMA" />
-              <SectionRow title="🇹🇼 Taiwan Drama" items={taiwanDramaList} type="tv" badge="TW" badgeColor="#dc2626" />
-
-              {/* ── Drama Thailand & Japan ────────────────────── */}
-              <SectionRow title="🇹🇭 Drama Thailand" items={thaiDramaList} type="tv" badge="THAI" badgeColor="#d97706" />
-              <SectionRow title="🇯🇵 Drama Jepang" items={japanDramaList} type="tv" badge="JDRAMA" badgeColor="#7c3aed" />
-
-              {/* ── Indonesia ─────────────────────────────────── */}
-              <SectionRow title="🇮🇩 Drama Indonesia" items={indoDramaList} type="tv" badge="INDO" badgeColor="#059669" />
-              <SectionRow title="🇮🇩 Film Indonesia" items={filmIndoList} type="movie" badge="LOKAL" badgeColor="#059669" />
-
-              {/* ── Trending ─────────────────────────────────── */}
-              <View style={S.section}>
-                <View style={S.sectionHeader}>
-                  <Text style={S.sectionTitle}>📈 Trending</Text>
-                  <View style={S.toggleRow}>
-                    {(["day", "week"] as const).map(tab => (
-                      <TouchableOpacity key={tab}
-                        style={[S.toggleBtn, trendingTab === tab && S.toggleBtnActive]}
-                        onPress={() => setTrendingTab(tab)} activeOpacity={0.8}>
-                        <Text style={[S.toggleText, trendingTab === tab && S.toggleTextActive]}>
-                          {tab === "day" ? "Hari ini" : "Minggu ini"}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-                  {trendResults.map(item => <MediaCard key={item.id} item={item} type="movie" />)}
-                </ScrollView>
-              </View>
-
-              {/* ── Film Asia ─────────────────────────────────── */}
-              <SectionRow title="🇰🇷 Film Korea" items={filmKoreaList} type="movie" badge="K-MOVIE" badgeColor="#0369a1" />
-              <SectionRow title="🇨🇳 Film China" items={filmChinaList} type="movie" badge="C-MOVIE" />
-              <SectionRow title="🇯🇵 Film Jepang" items={filmJepangList} type="movie" badge="J-MOVIE" badgeColor="#7c3aed" />
-              <SectionRow title="🇹🇭 Film Thailand" items={filmThaiList} type="movie" badge="THAI" badgeColor="#d97706" />
-              <SectionRow title="🎬 Bollywood" items={bollywoodList} type="movie" badge="INDIA" badgeColor="#dc2626" />
-
-              {/* ── Film Populer ──────────────────────────────── */}
-              <SectionRow title="🔥 Film Populer" items={popularMovies} type="movie" />
+              {/* Anime Sections */}
+              <SectionRow
+                title="⛩️ Anime Jepang Populer (TMDB)"
+                items={tmdbAnime}
+                badge="ANIME"
+                badgeColor={PURPLE}
+              />
+              <SectionRow
+                title="🆕 Anime Baru (TMDB)"
+                items={tmdbAnimeNew}
+                badge="NEW"
+                badgeColor={PURPLE}
+              />
             </>
         }
       </ScrollView>
@@ -373,10 +408,14 @@ export default function HomeScreen() {
           <View style={S.searchBar}>
             <TextInput
               style={S.searchInput}
-              placeholder="Cari donghua, anime, drama, film..."
+              placeholder="Cari anime, donghua..."
               placeholderTextColor={GRAY}
               value={searchQuery}
-              onChangeText={q => { setSearchQuery(q); if (q.length > 1) doSearch(q); else setSearchResults([]); }}
+              onChangeText={q => {
+                setSearchQuery(q);
+                if (q.length > 1) doSearch(q);
+                else setSearchResults([]);
+              }}
               autoFocus
               returnKeyType="search"
               onSubmitEditing={() => doSearch(searchQuery)}
@@ -390,28 +429,33 @@ export default function HomeScreen() {
             : searchResults.length > 0
               ? <FlatList
                   data={searchResults}
-                  keyExtractor={i => `${i.id}-${i.media_type}`}
+                  keyExtractor={i => `${i._source ?? "t"}-${i.id}`}
                   numColumns={3}
                   contentContainerStyle={{ padding: 12, gap: 12 }}
                   columnWrapperStyle={{ gap: 12 }}
                   renderItem={({ item }) => (
                     <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}
-                      onPress={() => { setSearchModal(false); router.push((item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`) as never); }}>
+                      onPress={() => { setSearchModal(false); navigateTo(item); }}>
                       <View style={S.posterWrap}>
-                        {item.poster_path
-                          ? <Image source={{ uri: `${IMG_W}${item.poster_path}` }} style={S.poster} />
-                          : <View style={[S.poster, S.noImg]}><Text style={{ color: "#444", fontSize: 9, textAlign: "center", padding: 4 }}>{item.title ?? item.name}</Text></View>
+                        {(item._aniPoster ?? (item.poster_path ? `${IMG_W}${item.poster_path}` : null))
+                          ? <Image source={{ uri: item._aniPoster ?? `${IMG_W}${item.poster_path}` }} style={S.poster} />
+                          : <View style={[S.poster, S.noImg]}>
+                              <Text style={{ color: "#444", fontSize: 9, textAlign: "center", padding: 4 }}>
+                                {item.name ?? item.title}
+                              </Text>
+                            </View>
                         }
-                        <LanguageBadge lang={item.original_language} />
+                        <TypeBadge item={item} />
+                        <SourceBadge source={item._source} />
                       </View>
-                      <Text style={S.cardTitle} numberOfLines={2}>{item.title ?? item.name}</Text>
+                      <Text style={S.cardTitle} numberOfLines={2}>{item.name ?? item.title}</Text>
                     </TouchableOpacity>
                   )}
                 />
               : <View style={{ alignItems: "center", marginTop: 60 }}>
                   <Text style={{ fontSize: 36 }}>🔍</Text>
                   <Text style={{ color: GRAY, marginTop: 12, fontSize: 14 }}>
-                    {searchQuery.length > 0 ? `Tidak ada hasil untuk "${searchQuery}"` : "Ketik untuk mencari"}
+                    {searchQuery.length > 0 ? `Tidak ada hasil untuk "${searchQuery}"` : "Ketik untuk mencari anime / donghua"}
                   </Text>
                 </View>
           }
@@ -421,50 +465,44 @@ export default function HomeScreen() {
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const S = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: BG },
-  headerSafe:       { backgroundColor: "rgba(13,0,0,0.97)", zIndex: 10 },
-  header:           { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10 },
-  headerIcon:       { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(26,0,0,0.9)", alignItems: "center", justifyContent: "center" },
-  logoText:         { color: "#fff", fontSize: 22, fontWeight: "900", letterSpacing: -1 },
-  hero:             { marginHorizontal: 14, height: height * 0.30, borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 12, marginTop: 6 },
-  heroImg:          { position: "absolute", width: "100%", height: "100%" },
+  container:          { flex: 1, backgroundColor: BG },
+  headerSafe:         { backgroundColor: "rgba(13,0,0,0.97)", zIndex: 10 },
+  header:             { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10 },
+  headerIcon:         { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(26,0,0,0.9)", alignItems: "center", justifyContent: "center" },
+  logoText:           { color: "#fff", fontSize: 22, fontWeight: "900", letterSpacing: -1 },
+  hero:               { marginHorizontal: 14, height: height * 0.30, borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 12, marginTop: 6 },
+  heroImg:            { position: "absolute", width: "100%", height: "100%" },
   heroImgPlaceholder: { position: "absolute", width: "100%", height: "100%", backgroundColor: CARD_BG },
-  heroGrad:         { position: "absolute", inset: 0, backgroundColor: "rgba(13,0,0,0.45)" },
-  heroContent:      { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14, gap: 4 },
-  heroTitle:        { color: "#fff", fontSize: 17, fontWeight: "900", lineHeight: 22, textShadowColor: "rgba(0,0,0,.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  heroOverview:     { color: "rgba(255,255,255,.7)", fontSize: 11, lineHeight: 15 },
-  heroBtns:         { flexDirection: "row", gap: 8, marginTop: 8 },
-  btnWatch:         { backgroundColor: RED, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  btnWatchText:     { color: "#fff", fontWeight: "800", fontSize: 12 },
-  btnInfo:          { backgroundColor: "rgba(255,255,255,.14)", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,.2)" },
-  btnInfoText:      { color: "#fff", fontWeight: "700", fontSize: 12 },
-  genres:           { paddingHorizontal: 16, gap: 8, paddingVertical: 14 },
-  genreChip:        { borderRadius: 20, borderWidth: 1.5, borderColor: "#3a0000", paddingHorizontal: 16, paddingVertical: 8 },
-  genreChipActive:  { backgroundColor: RED, borderColor: RED },
-  genreText:        { color: GRAY, fontSize: 13, fontWeight: "600" },
-  genreTextActive:  { color: "#fff" },
-  section:          { marginBottom: 26 },
-  sectionHeader:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 12 },
-  sectionTitle:     { color: "#fff", fontSize: 17, fontWeight: "800" },
-  categoryBadge:    { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  categoryBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
-  toggleRow:        { flexDirection: "row", backgroundColor: CARD_BG, borderRadius: 20, padding: 3 },
-  toggleBtn:        { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18 },
-  toggleBtnActive:  { backgroundColor: RED },
-  toggleText:       { color: GRAY, fontSize: 12, fontWeight: "600" },
-  toggleTextActive: { color: "#fff" },
-  card:             { width: CARD_W },
-  posterWrap:       { position: "relative", borderRadius: 10, overflow: "hidden" },
-  poster:           { width: CARD_W, aspectRatio: 2 / 3, borderRadius: 10, backgroundColor: CARD_BG },
-  noImg:            { alignItems: "center", justifyContent: "center" },
-  ratingBadge:      { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(13,0,0,0.88)", borderRadius: 12, paddingHorizontal: 5, paddingVertical: 2, borderWidth: 1.5 },
-  ratingText:       { color: "#fff", fontSize: 9, fontWeight: "800" },
-  langBadge:        { position: "absolute", top: 6, left: 0, paddingHorizontal: 6, paddingVertical: 2, borderTopRightRadius: 6, borderBottomRightRadius: 6 },
-  langBadgeText:    { color: "#fff", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
-  cardTitle:        { color: "#c8d6e5", fontSize: 12, marginTop: 7, lineHeight: 16, fontWeight: "500" },
-  searchOverlay:    { flex: 1, backgroundColor: BG },
-  searchBar:        { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: "#2a0000" },
-  searchInput:      { flex: 1, backgroundColor: CARD_BG, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: "#fff", fontSize: 15, borderWidth: 1, borderColor: "#3a0000" },
-  searchCancel:     { paddingHorizontal: 6, paddingVertical: 8 },
+  heroGrad:           { position: "absolute", inset: 0, backgroundColor: "rgba(13,0,0,0.45)" },
+  heroContent:        { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14, gap: 4 },
+  heroTitle:          { color: "#fff", fontSize: 17, fontWeight: "900", lineHeight: 22, textShadowColor: "rgba(0,0,0,.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  heroOverview:       { color: "rgba(255,255,255,.7)", fontSize: 11, lineHeight: 15 },
+  heroBtns:           { flexDirection: "row", gap: 8, marginTop: 8 },
+  btnWatch:           { backgroundColor: RED, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  btnWatchText:       { color: "#fff", fontWeight: "800", fontSize: 12 },
+  btnInfo:            { backgroundColor: "rgba(255,255,255,.14)", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,.2)" },
+  btnInfoText:        { color: "#fff", fontWeight: "700", fontSize: 12 },
+  section:            { marginBottom: 26 },
+  sectionHeader:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 12 },
+  sectionTitle:       { color: "#fff", fontSize: 16, fontWeight: "800", flex: 1 },
+  categoryBadge:      { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 8 },
+  categoryBadgeText:  { color: "#fff", fontSize: 10, fontWeight: "800" },
+  card:               { width: CARD_W },
+  posterWrap:         { position: "relative", borderRadius: 10, overflow: "hidden" },
+  poster:             { width: CARD_W, aspectRatio: 2 / 3, borderRadius: 10, backgroundColor: CARD_BG },
+  noImg:              { alignItems: "center", justifyContent: "center" },
+  ratingBadge:        { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(13,0,0,0.88)", borderRadius: 12, paddingHorizontal: 5, paddingVertical: 2, borderWidth: 1.5 },
+  ratingText:         { color: "#fff", fontSize: 9, fontWeight: "800" },
+  langBadge:          { position: "absolute", top: 6, left: 0, paddingHorizontal: 6, paddingVertical: 2, borderTopRightRadius: 6, borderBottomRightRadius: 6 },
+  langBadgeText:      { color: "#fff", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
+  sourceBadge:        { position: "absolute", bottom: 6, right: 6, backgroundColor: PURPLE, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 },
+  sourceBadgeText:    { color: "#fff", fontSize: 7, fontWeight: "900" },
+  cardTitle:          { color: "#c8d6e5", fontSize: 12, marginTop: 7, lineHeight: 16, fontWeight: "500" },
+  searchOverlay:      { flex: 1, backgroundColor: BG },
+  searchBar:          { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: "#2a0000" },
+  searchInput:        { flex: 1, backgroundColor: CARD_BG, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: "#fff", fontSize: 15, borderWidth: 1, borderColor: "#3a0000" },
+  searchCancel:       { paddingHorizontal: 6, paddingVertical: 8 },
 });
