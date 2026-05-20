@@ -54,6 +54,19 @@ function buildAutoEmbedUrl(tmdbId: number, s: number, ep: number) {
 function buildZxcUrl(tmdbId: number, serverNum: number, s: number, ep: number) {
   return `https://zxcstream.xyz/player/tv/${tmdbId}?server=${serverNum}&color=E50914&autoplay=true&back=true&season=${s}&episode=${ep}`;
 }
+// ── PlusHub sources ──────────────────────────────────────────────────
+function buildAutoEmbedAppUrl(tmdbId: number, s: number, ep: number) {
+  return `https://player.autoembed.app/embed/tv/${tmdbId}/${s}/${ep}`;
+}
+function buildBraflixUrl(tmdbId: number, s: number, ep: number) {
+  return `https://braflix.me/embed/tv/${tmdbId}/${s}/${ep}`;
+}
+function buildCineHdUrl(tmdbId: number, s: number, ep: number) {
+  return `https://cinehd.app/embed/tv/${tmdbId}/${s}/${ep}`;
+}
+function buildNxshaUrl(tmdbId: number, s: number, ep: number) {
+  return `https://nxsha.app/embed/tv/${tmdbId}/${s}/${ep}`;
+}
 
 // ── Helper: resolve AniList → TMDB ID via title search ───────────────
 async function resolveAnilistToTmdb(anilistId: number): Promise<{
@@ -237,6 +250,8 @@ export default function TvDetailScreen() {
   const [tmdbData, setTmdbData]   = useState<any>(null);
   const [cast, setCast]           = useState<any[]>([]);
   const [similar, setSimilar]     = useState<any[]>([]);
+  const [nextEpisode, setNextEpisode] = useState<any>(null);
+  const [lastEpisode, setLastEpisode] = useState<any>(null);
 
   // Resolved TMDB ID (for embeds) — may be null for AniList items with no TMDB match
   const [resolvedTmdbId, setResolvedTmdbId] = useState<number | null>(null);
@@ -312,6 +327,8 @@ export default function TvDetailScreen() {
           setEpCount(seasons[0]?.episode_count ?? 12);
           setCast(d?.credits?.cast?.slice(0, 10) ?? []);
           setSimilar(d?.similar?.results?.slice(0, 10) ?? []);
+          setNextEpisode(d?.next_episode_to_air ?? null);
+          setLastEpisode(d?.last_episode_to_air ?? null);
         }).catch(() => {}),
         loadFirebaseEmbeds(tmdbId),
       ]).finally(() => setIsLoading(false));
@@ -320,7 +337,18 @@ export default function TvDetailScreen() {
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", s => {
-      if (s === "active" && resolvedTmdbId) loadFirebaseEmbeds(resolvedTmdbId);
+      if (s === "active" && resolvedTmdbId) {
+        loadFirebaseEmbeds(resolvedTmdbId);
+        // Auto-refresh episode count & schedule when app comes to foreground
+        tmdb.tvDetail(resolvedTmdbId).then(d => {
+          const seasons = (d?.seasons ?? []).filter((s: any) => s.season_number > 0);
+          setEpCount(seasons[0]?.episode_count ?? 12);
+          setTmdbData(d);
+          setNextEpisode(d?.next_episode_to_air ?? null);
+          setLastEpisode(d?.last_episode_to_air ?? null);
+          setStatus(d?.status ?? "");
+        }).catch(() => {});
+      }
     });
     return () => sub.remove();
   }, [resolvedTmdbId, loadFirebaseEmbeds]);
@@ -360,6 +388,14 @@ export default function TvDetailScreen() {
           url: buildZxcUrl(t, 2, s, e),    badge: "HD",   badgeColor: "#3b82f6" },
         { id: "zxc3",      label: "ZxcStream S3",      icon: "🖥️",
           url: buildZxcUrl(t, 3, s, e),    badge: "ALT",  badgeColor: "#8b5cf6" },
+        { id: "autoembedapp", label: "AutoEmbed App",  icon: "🌟",
+          url: buildAutoEmbedAppUrl(t, s, e), badge: "HUB", badgeColor: "#e11d48" },
+        { id: "braflix",   label: "Braflix",            icon: "🎞️",
+          url: buildBraflixUrl(t, s, e),   badge: "HUB",  badgeColor: "#0284c7" },
+        { id: "cinehd",    label: "CineHD",             icon: "🎦",
+          url: buildCineHdUrl(t, s, e),    badge: "HUB",  badgeColor: "#d97706" },
+        { id: "nxsha",     label: "NxSha",              icon: "🔮",
+          url: buildNxshaUrl(t, s, e),     badge: "HUB",  badgeColor: "#7c3aed" },
       );
     }
 
@@ -482,6 +518,46 @@ export default function TvDetailScreen() {
               </View>
             ))}
           </ScrollView>
+        )}
+
+        {/* Release Schedule Banner */}
+        {nextEpisode && (
+          <View style={S.scheduleBanner}>
+            <View style={S.scheduleTitleRow}>
+              <Text style={S.scheduleIcon}>🗓</Text>
+              <Text style={S.scheduleTitle}>Episode Berikutnya</Text>
+            </View>
+            <Text style={S.scheduleEpLabel}>
+              S{nextEpisode.season_number}E{nextEpisode.episode_number}
+              {nextEpisode.name ? ` — ${nextEpisode.name}` : ""}
+            </Text>
+            <Text style={S.scheduleDate}>
+              📅 Tayang: {nextEpisode.air_date
+                ? new Date(nextEpisode.air_date).toLocaleDateString("id-ID", {
+                    weekday: "long", year: "numeric", month: "long", day: "numeric",
+                  })
+                : "Belum diumumkan"}
+            </Text>
+          </View>
+        )}
+        {!nextEpisode && lastEpisode && (
+          <View style={[S.scheduleBanner, { borderColor: "#374151", backgroundColor: "#111827" }]}>
+            <View style={S.scheduleTitleRow}>
+              <Text style={S.scheduleIcon}>✅</Text>
+              <Text style={[S.scheduleTitle, { color: "#6b7280" }]}>Episode Terakhir</Text>
+            </View>
+            <Text style={[S.scheduleEpLabel, { color: "#9ca3af" }]}>
+              S{lastEpisode.season_number}E{lastEpisode.episode_number}
+              {lastEpisode.name ? ` — ${lastEpisode.name}` : ""}
+            </Text>
+            <Text style={[S.scheduleDate, { color: "#6b7280" }]}>
+              📅 Tayang: {lastEpisode.air_date
+                ? new Date(lastEpisode.air_date).toLocaleDateString("id-ID", {
+                    weekday: "long", year: "numeric", month: "long", day: "numeric",
+                  })
+                : "-"}
+            </Text>
+          </View>
         )}
 
         {/* Synopsis */}
@@ -646,6 +722,12 @@ const S = StyleSheet.create({
   resolvingText:   { color: "#3b82f6", fontSize: 12, fontWeight: "600" },
   warnBar:         { marginHorizontal: 16, marginBottom: 12, backgroundColor: "#2a1a00", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#f59e0b" },
   warnText:        { color: "#f59e0b", fontSize: 12, lineHeight: 18 },
+  scheduleBanner:  { marginHorizontal: 16, marginBottom: 14, backgroundColor: "#0a1f0a", borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: GREEN },
+  scheduleTitleRow:{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  scheduleIcon:    { fontSize: 16 },
+  scheduleTitle:   { color: GREEN, fontSize: 13, fontWeight: "800" },
+  scheduleEpLabel: { color: "#fff", fontSize: 13, fontWeight: "700", marginBottom: 4 },
+  scheduleDate:    { color: "#86efac", fontSize: 12, lineHeight: 18 },
   genreRow:        { paddingHorizontal: 16, gap: 8, paddingVertical: 12 },
   genreChip:       { backgroundColor: CARD, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: "#3a0000" },
   genreText:       { color: GRAY, fontSize: 12, fontWeight: "600" },
