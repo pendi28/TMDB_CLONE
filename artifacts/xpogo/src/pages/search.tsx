@@ -39,7 +39,7 @@ export default function SearchPage() {
     <div
       className="min-h-screen pb-20"
       style={{
-        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
+        background: "#141414",
         paddingTop: "calc(56px + var(--banner-top-height, 0px) + 24px)",
       }}
     >
@@ -55,7 +55,7 @@ export default function SearchPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
-              className="w-full bg-[#1a0000] border border-[#8B0000] text-white rounded-lg pl-12 pr-4 py-3 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600 text-sm"
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white rounded-lg pl-12 pr-4 py-3 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600 text-sm"
             />
           </div>
         </div>
@@ -93,15 +93,14 @@ export default function SearchPage() {
             </div>
           </>
         ) : debouncedQ.length > 1 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-white text-lg font-bold mb-2">Tidak ditemukan</h3>
-            <p className="text-gray-500 text-sm">Coba kata kunci lain</p>
+          <div className="text-center py-20">
+            <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Tidak ada hasil untuk "{debouncedQ}"</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Search className="w-12 h-12 text-[#8B0000] mb-4" />
-            <p className="text-gray-500 text-sm">Ketik untuk mencari film atau series</p>
+          <div className="text-center py-20">
+            <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Ketik untuk mulai mencari...</p>
           </div>
         )}
       </div>

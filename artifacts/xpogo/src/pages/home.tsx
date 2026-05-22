@@ -12,6 +12,8 @@ const BACKDROP_BASE = "https://image.tmdb.org/t/p/original";
 const POSTER_BASE   = "https://image.tmdb.org/t/p/w342";
 const POSTER_DETAIL = "https://image.tmdb.org/t/p/w500";
 
+const BG = "#141414";
+
 function StarRating({ score, showNum = false }: { score?: number; showNum?: boolean }) {
   const val   = score ?? 0;
   const stars = Math.round(val / 2);
@@ -39,7 +41,7 @@ function HorrorCarousel({ items, mediaType }: { items: TmdbListItem[]; mediaType
     <div className="relative group">
       <button onClick={() => scroll("left")}
         className="absolute left-0 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="bg-[#8B0000] hover:bg-[#E50914] text-white rounded-r w-7 h-14 flex items-center justify-center transition-colors shadow-lg">
+        <div className="bg-black/60 hover:bg-[#E50914] text-white rounded-r w-7 h-14 flex items-center justify-center transition-colors shadow-lg border border-white/10">
           <ChevronLeft className="w-5 h-5" />
         </div>
       </button>
@@ -57,7 +59,7 @@ function HorrorCarousel({ items, mediaType }: { items: TmdbListItem[]; mediaType
       </div>
       <button onClick={() => scroll("right")}
         className="absolute right-0 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="bg-[#8B0000] hover:bg-[#E50914] text-white rounded-l w-7 h-14 flex items-center justify-center transition-colors shadow-lg">
+        <div className="bg-black/60 hover:bg-[#E50914] text-white rounded-l w-7 h-14 flex items-center justify-center transition-colors shadow-lg border border-white/10">
           <ChevronRight className="w-5 h-5" />
         </div>
       </button>
@@ -69,12 +71,12 @@ function CustomMovieCard({ m }: { m: CustomMovie }) {
   return (
     <Link href={m.tmdbId ? `/movie/${m.tmdbId}` : `/movie/${m.id}`}>
       <div className="horror-card flex-shrink-0 w-32 cursor-pointer group">
-        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a0000] mb-1.5 border border-[#8B0000]/30">
+        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a1a1a] mb-1.5">
           {m.posterUrl
             ? <img src={m.posterUrl} alt={m.title} className="w-full h-full object-cover" loading="lazy" />
-            : <div className="w-full h-full flex items-center justify-center"><Film className="w-8 h-8 text-[#8B0000]" /></div>
+            : <div className="w-full h-full flex items-center justify-center"><Film className="w-8 h-8 text-[#E50914]" /></div>
           }
-          <div className="absolute top-1 left-1 bg-[#E50914]/90 text-white text-[9px] font-bold px-1 py-0.5 rounded uppercase">
+          <div className="absolute top-1 left-1 bg-[#E50914] text-white text-[9px] font-bold px-1 py-0.5 rounded uppercase">
             {m.type === "series" ? "Series" : "Film"}
           </div>
         </div>
@@ -121,19 +123,19 @@ function FeaturedMovie({ item }: { item: TmdbListItem }) {
   const lang  = (detail as any)?.original_language;
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]">
+    <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
       {item.backdrop_path && (
         <div className="absolute inset-0">
           <img src={`${BACKDROP_BASE}${item.backdrop_path}`} alt={title} className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0000] via-[#0d0000]/80 to-[#0d0000]/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/80 to-[#141414]/50" />
         </div>
       )}
       <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5">
         <div className="flex-shrink-0">
-          <div className="w-24 sm:w-28 rounded overflow-hidden border border-[#8B0000]/50 shadow-lg">
+          <div className="w-24 sm:w-28 rounded overflow-hidden border border-white/10 shadow-lg">
             {item.poster_path
               ? <img src={`${POSTER_DETAIL}${item.poster_path}`} alt={title} className="w-full aspect-[2/3] object-cover" />
-              : <div className="w-full aspect-[2/3] bg-[#1a0000] flex items-center justify-center"><Film className="w-8 h-8 text-[#8B0000]" /></div>
+              : <div className="w-full aspect-[2/3] bg-[#1a1a1a] flex items-center justify-center"><Film className="w-8 h-8 text-gray-500" /></div>
             }
           </div>
         </div>
@@ -146,19 +148,19 @@ function FeaturedMovie({ item }: { item: TmdbListItem }) {
             {genres && (
               <div className="flex gap-2">
                 <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Genre</span>
-                <span className="text-gray-200 text-xs">{genres}</span>
+                <span className="text-gray-300 text-xs">{genres}</span>
               </div>
             )}
             {runtime && (
               <div className="flex gap-2">
                 <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Durasi</span>
-                <span className="text-gray-200 text-xs">{Math.floor(runtime / 60)}j {runtime % 60}m</span>
+                <span className="text-gray-300 text-xs">{Math.floor(runtime / 60)}j {runtime % 60}m</span>
               </div>
             )}
             {director !== "—" && (
               <div className="flex gap-2">
                 <span className="text-gray-500 text-xs uppercase tracking-wider w-16">Sutradara</span>
-                <span className="text-gray-200 text-xs line-clamp-1">{director}</span>
+                <span className="text-gray-300 text-xs line-clamp-1">{director}</span>
               </div>
             )}
           </div>
@@ -171,7 +173,7 @@ function FeaturedMovie({ item }: { item: TmdbListItem }) {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href={type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`}>
-              <button className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white text-sm font-bold px-5 py-2 rounded transition-colors shadow-[0_0_12px_rgba(229,9,20,0.4)]">
+              <button className="flex items-center gap-2 bg-[#E50914] hover:bg-[#CC0000] text-white text-sm font-bold px-5 py-2 rounded transition-colors shadow-[0_0_12px_rgba(229,9,20,0.3)]">
                 <Play className="w-4 h-4 fill-white" /> Tonton
               </button>
             </Link>
@@ -214,7 +216,7 @@ function SearchableHeader({ title }: { title: string }) {
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#E50914]" />
           <input type="text" value={q} onChange={(e) => setQ(e.target.value)}
             placeholder="Cari..."
-            className="bg-[#1a0000] border border-[#8B0000]/50 text-white text-xs rounded pl-7 pr-3 py-1.5 w-32 focus:outline-none focus:border-[#E50914] placeholder:text-gray-700" />
+            className="bg-[#1a1a1a] border border-[#333] text-white text-xs rounded pl-7 pr-3 py-1.5 w-32 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600" />
         </div>
       </form>
     </div>
@@ -231,17 +233,14 @@ export default function HomePage() {
   const { data: topTv }         = useQuery<TmdbListResult>({ queryKey: ["top-tv"],         queryFn: () => tmdb.topTv() });
   const { data: customMovies = [] } = useQuery<CustomMovie[]>({ queryKey: ["custom_movies"], queryFn: fb.getCustomMovies });
 
-  // ── Donghua ───────────────────────────────────────────────────────
   const { data: donghua }         = useQuery<TmdbListResult>({ queryKey: ["donghua"],          queryFn: () => tmdb.donghua() });
   const { data: donghuaNew }      = useQuery<TmdbListResult>({ queryKey: ["donghua-new"],       queryFn: () => tmdb.donghuaNew() });
   const { data: donghuaTopRated } = useQuery<TmdbListResult>({ queryKey: ["donghua-top"],       queryFn: () => tmdb.donghuaTopRated() });
 
-  // ── Anime ─────────────────────────────────────────────────────────
   const { data: anime }         = useQuery<TmdbListResult>({ queryKey: ["anime"],          queryFn: () => tmdb.anime() });
   const { data: animeNew }      = useQuery<TmdbListResult>({ queryKey: ["anime-new"],       queryFn: () => tmdb.animeNew() });
   const { data: animeTopRated } = useQuery<TmdbListResult>({ queryKey: ["anime-top"],       queryFn: () => tmdb.animeTopRated() });
 
-  // ── Drama Asia ────────────────────────────────────────────────────
   const { data: dramaKorea }       = useQuery<TmdbListResult>({ queryKey: ["drama-korea"],       queryFn: () => tmdb.dramaKorea() });
   const { data: dramaKoreaNew }    = useQuery<TmdbListResult>({ queryKey: ["drama-korea-new"],    queryFn: () => tmdb.dramaKoreaNew() });
   const { data: dramaChina }       = useQuery<TmdbListResult>({ queryKey: ["drama-china"],       queryFn: () => tmdb.dramaChina() });
@@ -251,7 +250,6 @@ export default function HomePage() {
   const { data: dramaJapan }       = useQuery<TmdbListResult>({ queryKey: ["drama-japan"],       queryFn: () => tmdb.dramaJapan() });
   const { data: dramaPhilippines } = useQuery<TmdbListResult>({ queryKey: ["drama-philippines"], queryFn: () => tmdb.dramaPhilippines() });
 
-  // ── Film Asia & Lokal ─────────────────────────────────────────────
   const { data: filmKorea }     = useQuery<TmdbListResult>({ queryKey: ["film-korea"],     queryFn: () => tmdb.filmKorea() });
   const { data: filmChina }     = useQuery<TmdbListResult>({ queryKey: ["film-china"],     queryFn: () => tmdb.filmChina() });
   const { data: filmJepang }    = useQuery<TmdbListResult>({ queryKey: ["film-jepang"],    queryFn: () => tmdb.filmJepang() });
@@ -266,32 +264,29 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen"
-      style={{ background: "linear-gradient(to bottom, #0d0000 0%, #100000 40%, #0a0000 100%)", paddingTop: "calc(56px + var(--banner-top-height, 0px))" }}>
+      style={{ background: BG, paddingTop: "calc(56px + var(--banner-top-height, 0px))" }}>
 
       {featured?.backdrop_path && (
         <div className="relative h-52 sm:h-64 overflow-hidden">
           <img src={`${BACKDROP_BASE}${featured.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-20" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0d0000]/30 via-transparent to-[#0d0000]" />
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0d0000] to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#141414]/30 via-transparent to-[#141414]" />
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#141414] to-transparent" />
         </div>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 -mt-8 relative z-10">
 
-        {/* ── Trending Carousel ─────────────────────────── */}
         <section className="mb-8">
           <SearchableHeader title="CHOOSE YOUR MOVIE" />
           <HorrorCarousel items={carouselItems} />
         </section>
 
-        {/* ── Featured ─────────────────────────────────── */}
         {featured && (
           <section className="mb-8">
             <FeaturedMovie item={featured} />
           </section>
         )}
 
-        {/* ── Koleksi Firebase ─────────────────────────── */}
         {customMovies.length > 0 && (
           <section className="mb-8">
             <SectionHeader title="KOLEKSI KAMI" />
@@ -301,9 +296,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* DONGHUA                                        */}
-        {/* ══════════════════════════════════════════════ */}
         {(donghuaNew?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
             <SectionHeader title="🆕 DONGHUA RILIS TERBARU" badge="NEW 2025" />
@@ -323,9 +315,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* ANIME                                          */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(animeNew?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -346,9 +335,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* DRAMA KOREA                                    */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(dramaKoreaNew?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -369,9 +355,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* DRAMA CHINA & TAIWAN                           */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(dramaChina?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -392,9 +375,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* DRAMA THAILAND & JEPANG                        */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(dramaThailand?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -421,9 +401,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* INDONESIA & ASIA TENGGARA                      */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(dramaIndonesia?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -450,9 +427,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ══════════════════════════════════════════════ */}
-        {/* GLOBAL                                         */}
-        {/* ══════════════════════════════════════════════ */}
         <div className="section-divider pt-4 mb-6" />
         {(nowPlaying?.results?.length ?? 0) > 0 && (
           <section className="mb-8">
@@ -510,7 +484,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ── Browse Buttons ───────────────────────── */}
         <div className="section-divider pt-6 mb-6" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
           {[
@@ -522,7 +495,7 @@ export default function HomePage() {
             { href: "/tv/top-rated",       label: "BEST SERIES", icon: Tv2,   desc: "Series terbaik sepanjang masa" },
           ].map(({ href, label, icon: Icon, desc }) => (
             <Link key={href} href={href}>
-              <div className="group border border-[#8B0000]/30 bg-[#1a0000]/50 hover:bg-[#1a0000] hover:border-[#E50914]/50 rounded-lg p-3 transition-all cursor-pointer">
+              <div className="group border border-white/10 bg-[#1a1a1a]/50 hover:bg-[#1a1a1a] hover:border-[#E50914]/50 rounded-lg p-3 transition-all cursor-pointer">
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="w-4 h-4 text-[#E50914]" />
                   <span className="text-white text-xs font-black tracking-widest">{label}</span>
@@ -533,9 +506,9 @@ export default function HomePage() {
           ))}
         </div>
 
-        <div className="text-center py-6 border-t border-[#8B0000]/20">
-          <p className="text-[#8B0000] text-xs font-black tracking-widest">XPOGO</p>
-          <p className="text-gray-700 text-[10px] mt-1">© 2025 • Movie & Series Streaming</p>
+        <div className="text-center py-6 border-t border-white/10">
+          <p className="text-[#E50914] text-xs font-black tracking-widest">XPOGO</p>
+          <p className="text-gray-600 text-[10px] mt-1">© 2025 • Movie & Series Streaming</p>
         </div>
       </div>
     </div>
