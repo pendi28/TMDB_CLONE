@@ -18,14 +18,17 @@ import MovieCard from "@/components/MovieCard";
 import AnimePage from "@/pages/anime";
 import AnimeDetailPage from "@/pages/anime-detail";
 import { MangaListPage, MangaDetailPage } from "@/pages/manga";
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
+const BG = "#141414";
+
 /* ── Maintenance Page ──────────────────────────────────── */
 function MaintenancePage({ message }: { message: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center" style={{ background: "#0d0000" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center" style={{ background: BG }}>
       <div className="text-6xl mb-6">🔧</div>
       <h1 className="text-white text-2xl font-black mb-3">Sedang Maintenance</h1>
       <p className="text-gray-400 text-base max-w-sm leading-relaxed mb-8">
@@ -76,7 +79,7 @@ function PageShell({ title, queryKey, queryFn, mediaType }: {
     <div
       className="min-h-screen pb-20"
       style={{
-        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
+        background: BG,
         paddingTop: "calc(56px + var(--banner-top-height, 0px) + 32px)",
       }}
     >
@@ -116,7 +119,7 @@ function PeoplePage() {
     <div
       className="min-h-screen pb-20"
       style={{
-        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
+        background: BG,
         paddingTop: "calc(56px + var(--banner-top-height, 0px) + 32px)",
       }}
     >
@@ -136,7 +139,7 @@ function AwardsPage() {
     <div
       className="min-h-screen pb-20 text-white"
       style={{
-        background: "linear-gradient(to bottom, #0d0000, #0a0000)",
+        background: BG,
         paddingTop: "calc(56px + var(--banner-top-height, 0px) + 32px)",
       }}
     >
@@ -213,7 +216,6 @@ function AppContent() {
           <Navbar />
           <main>
             <Switch>
-              
               <Route path="/anime" component={AnimePage} />
               <Route path="/anime/:id" component={AnimeDetailPage} />
               <Route path="/manga" component={MangaListPage} />
@@ -229,16 +231,14 @@ function AppContent() {
               <Route path="/tv/top-rated" component={() => <PageShell title="Top Rated TV Shows" queryKey={["top-tv", 1]} queryFn={() => tmdb.topTv(1)} mediaType="tv" />} />
               <Route path="/tv/on-tv" component={() => <PageShell title="On TV" queryKey={["on-tv", 1]} queryFn={() => tmdb.onTv(1)} mediaType="tv" />} />
               <Route path="/tv/airing-today" component={() => <PageShell title="Airing Today" queryKey={["airing-today", 1]} queryFn={() => tmdb.airingToday(1)} mediaType="tv" />} />
-              
-{/* TAMBAHKAN ROUTE DONGHUA DI SINI */}
-<Route path="/donghua" component={() => (
-  <PageShell 
-    title="Donghua China" 
-    queryKey={["donghua", 1]} 
-    queryFn={() => tmdb.donghua(1)} 
-    mediaType="tv" 
-  />
-)} />
+              <Route path="/donghua" component={() => (
+                <PageShell
+                  title="Donghua China"
+                  queryKey={["donghua", 1]}
+                  queryFn={() => tmdb.donghua(1)}
+                  mediaType="tv"
+                />
+              )} />
               <Route path="/people" component={PeoplePage} />
               <Route path="/awards" component={AwardsPage} />
               <Route path="/awards/:section" component={AwardsPage} />

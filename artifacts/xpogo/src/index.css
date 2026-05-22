@@ -35,21 +35,22 @@
 }
 
 :root {
-  --background: 0 0% 5%;
+  /* Netflix dark palette */
+  --background: 0 0% 8%;          /* #141414 */
   --foreground: 0 0% 95%;
-  --border: 0 60% 15%;
-  --input: 0 40% 12%;
-  --ring: 0 85% 45%;
-  --card: 0 50% 8%;
+  --border: 0 0% 20%;             /* neutral gray, not red */
+  --input: 0 0% 15%;
+  --ring: 0 85% 45%;              /* Netflix red */
+  --card: 0 0% 11%;               /* #1c1c1c */
   --card-foreground: 0 0% 95%;
-  --card-border: 0 50% 15%;
-  --popover: 0 50% 8%;
+  --card-border: 0 0% 22%;
+  --popover: 0 0% 11%;
   --popover-foreground: 0 0% 95%;
-  --primary: 0 85% 45%;
+  --primary: 0 85% 45%;           /* #E50914 */
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 40% 12%;
+  --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 85%;
-  --muted: 0 30% 10%;
+  --muted: 0 0% 12%;
   --muted-foreground: 0 0% 50%;
   --accent: 0 85% 45%;
   --accent-foreground: 0 0% 100%;
@@ -62,18 +63,18 @@
 }
 
 .dark {
-  --background: 0 0% 5%;
+  --background: 0 0% 8%;
   --foreground: 0 0% 95%;
-  --border: 0 60% 15%;
-  --input: 0 40% 12%;
+  --border: 0 0% 20%;
+  --input: 0 0% 15%;
   --ring: 0 85% 45%;
-  --card: 0 50% 8%;
+  --card: 0 0% 11%;
   --card-foreground: 0 0% 95%;
   --primary: 0 85% 45%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 40% 12%;
+  --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 85%;
-  --muted: 0 30% 10%;
+  --muted: 0 0% 12%;
   --muted-foreground: 0 0% 50%;
   --accent: 0 85% 45%;
   --accent-foreground: 0 0% 100%;
@@ -83,27 +84,26 @@
 
 @layer base {
   * { @apply border-border; box-sizing: border-box; }
-  html { 
-    color-scheme: dark; 
-    overflow-x: hidden; /* Tambahkan ini agar tidak meluber ke samping */
+  html {
+    color-scheme: dark;
+    overflow-x: hidden;
   }
   body {
     @apply font-sans antialiased;
-    background-color: #0d0000;
-    color: #f0f0f0;
-    min-height: 100%; /* Ubah dari 100vh ke 100% */
+    background-color: #141414;
+    color: #e5e5e5;
+    min-height: 100%;
     overflow-x: hidden;
     position: relative;
-    /* Tambahkan ini untuk memaksa GPU merender lebih bersih */
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
 }
 
-/* Horror scrollbar */
+/* Netflix scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0d0000; }
-::-webkit-scrollbar-thumb { background: #8B0000; border-radius: 2px; }
+::-webkit-scrollbar-track { background: #141414; }
+::-webkit-scrollbar-thumb { background: #E50914; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #CC0000; }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -128,22 +128,21 @@
   overflow: hidden;
 }
 
-/* Horror card hover */
+/* Netflix card hover — scale + shadow */
 .horror-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .horror-card:hover {
-  transform: scale(1.04);
-  box-shadow: 0 0 16px rgba(180, 0, 0, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
 }
 
-/* Red glow text */
+/* Logo glow */
 .text-glow-red {
-  text-shadow: 0 0 12px rgba(200, 0, 0, 0.8);
+  text-shadow: 0 0 10px rgba(229, 9, 20, 0.6);
 }
 
 /* Section divider */
 .section-divider {
-  border-top: 1px solid rgba(139, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-
