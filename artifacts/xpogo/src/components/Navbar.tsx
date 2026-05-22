@@ -7,8 +7,8 @@ const NAV_LINKS = [
   { label: "MOVIE", href: "/movies" },
   { label: "DONGHUA", href: "/donghua" },
   { label: "TV SHOW", href: "/tv" },
-  { label: "ANIME",     href: "/anime" },   // ✅ NEW
-  { label: "MANGA",     href: "/manga" },   // ✅ NEW
+  { label: "ANIME", href: "/anime" },
+  { label: "MANGA", href: "/manga" },
   { label: "FAVORIT", href: "/search" },
   { label: "COMMUNITY", href: "/people" },
 ];
@@ -59,8 +59,8 @@ export default function Navbar() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-[#0d0000]/98 shadow-[0_2px_20px_rgba(139,0,0,0.4)]"
-            : "bg-gradient-to-b from-[#0d0000] to-transparent"
+            ? "bg-[#141414]/98 shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
+            : "bg-gradient-to-b from-[#141414] to-transparent"
         }`}
         style={{ marginTop: "var(--banner-top-height, 0px)" }}
       >
@@ -69,8 +69,10 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <span className="text-2xl font-black tracking-widest text-glow-red"
-                style={{ color: "#E50914", fontFamily: "Georgia, serif", letterSpacing: "0.15em" }}>
+              <span
+                className="text-2xl font-black tracking-widest text-glow-red"
+                style={{ color: "#E50914", fontFamily: "Georgia, serif", letterSpacing: "0.15em" }}
+              >
                 XPOGO
               </span>
             </Link>
@@ -84,7 +86,7 @@ export default function Navbar() {
                   className={`px-3 py-1.5 text-[11px] font-bold tracking-widest transition-colors ${
                     location === l.href
                       ? "text-[#E50914] border-b-2 border-[#E50914]"
-                      : "text-gray-300 hover:text-white"
+                      : "text-gray-400 hover:text-white"
                   }`}
                 >
                   {l.label}
@@ -94,7 +96,6 @@ export default function Navbar() {
 
             {/* Right: Search + Account */}
             <div className="flex items-center gap-3">
-              {/* Search */}
               {searchOpen ? (
                 <form onSubmit={handleSearch} className="flex items-center">
                   <input
@@ -103,14 +104,14 @@ export default function Navbar() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cari film..."
-                    className="bg-black/60 border border-[#8B0000] text-white text-sm rounded px-3 py-1.5 w-44 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600"
+                    className="bg-[#141414]/80 border border-[#333] text-white text-sm rounded px-3 py-1.5 w-44 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600"
                   />
                   <button type="button" onClick={() => setSearchOpen(false)} className="ml-2 text-gray-400 hover:text-white">
                     <X className="w-4 h-4" />
                   </button>
                 </form>
               ) : (
-                <button onClick={() => setSearchOpen(true)} className="text-gray-300 hover:text-[#E50914] transition-colors p-1">
+                <button onClick={() => setSearchOpen(true)} className="text-gray-400 hover:text-white transition-colors p-1">
                   <Search className="w-5 h-5" />
                 </button>
               )}
@@ -119,7 +120,7 @@ export default function Navbar() {
               <div className="relative hidden md:block" ref={accountRef}>
                 <button
                   onClick={() => setAccountOpen(!accountOpen)}
-                  className="flex items-center gap-1.5 bg-[#1a0000] border border-[#8B0000] text-white text-xs font-bold px-3 py-1.5 rounded hover:border-[#E50914] transition-colors"
+                  className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#333] text-white text-xs font-bold px-3 py-1.5 rounded hover:border-[#E50914] transition-colors"
                 >
                   <User className="w-3.5 h-3.5 text-[#E50914]" />
                   <span>Account</span>
@@ -127,19 +128,19 @@ export default function Navbar() {
                 </button>
 
                 {accountOpen && (
-                  <div className="absolute right-0 top-full mt-1 bg-[#1a0000] border border-[#8B0000] rounded shadow-[0_4px_20px_rgba(139,0,0,0.5)] w-44 py-1 z-50">
-                    <div className="px-3 py-2 border-b border-[#8B0000]/40 mb-1">
+                  <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#333] rounded shadow-[0_4px_20px_rgba(0,0,0,0.6)] w-44 py-1 z-50">
+                    <div className="px-3 py-2 border-b border-[#333]/40 mb-1">
                       <p className="text-[10px] text-gray-500 uppercase tracking-widest">Enter your account</p>
                     </div>
                     <div className="px-3 py-2 space-y-1.5">
-                      <input placeholder="Username" className="w-full bg-black/50 border border-[#8B0000]/50 text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#E50914]" />
-                      <input type="password" placeholder="Password" className="w-full bg-black/50 border border-[#8B0000]/50 text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#E50914]" />
+                      <input placeholder="Username" className="w-full bg-black/50 border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#E50914]" />
+                      <input type="password" placeholder="Password" className="w-full bg-black/50 border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#E50914]" />
                       <button className="text-[10px] text-[#E50914] hover:underline block">Forget password?</button>
                       <button className="w-full bg-[#E50914] hover:bg-[#CC0000] text-white text-xs font-bold py-1.5 rounded transition-colors">
                         LOGIN
                       </button>
                     </div>
-                    <div className="px-3 py-2 border-t border-[#8B0000]/40 mt-1 space-y-1">
+                    <div className="px-3 py-2 border-t border-[#333]/40 mt-1 space-y-1">
                       {[
                         { icon: User, label: "My Account" },
                         { icon: BookmarkCheck, label: "Watchlist" },
@@ -157,7 +158,7 @@ export default function Navbar() {
               </div>
 
               {/* Mobile Hamburger */}
-              <button onClick={() => setMobileOpen(true)} className="md:hidden text-gray-300 hover:text-white p-1">
+              <button onClick={() => setMobileOpen(true)} className="md:hidden text-gray-400 hover:text-white p-1">
                 <Menu className="w-6 h-6" />
               </button>
             </div>
@@ -169,8 +170,8 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[#0d0000] border-r border-[#8B0000]/40 flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#8B0000]/30">
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[#141414] border-r border-[#333]/40 flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#333]/30">
               <span className="text-xl font-black tracking-widest text-glow-red" style={{ color: "#E50914" }}>XPOGO</span>
               <button onClick={() => setMobileOpen(false)} className="text-gray-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -185,7 +186,7 @@ export default function Navbar() {
                   placeholder="Cari film, series..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/60 border border-[#8B0000] text-white text-sm rounded pl-9 pr-3 py-2 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600"
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded pl-9 pr-3 py-2 focus:outline-none focus:border-[#E50914] placeholder:text-gray-600"
                 />
               </div>
             </form>
@@ -198,7 +199,7 @@ export default function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className={`block px-3 py-2.5 rounded text-sm font-bold tracking-widest transition-colors ${
                     location === l.href
-                      ? "bg-[#8B0000]/30 text-[#E50914]"
+                      ? "bg-[#E50914]/15 text-[#E50914]"
                       : "text-gray-300 hover:text-white hover:bg-white/5"
                   }`}
                 >
@@ -207,9 +208,9 @@ export default function Navbar() {
               ))}
             </nav>
 
-            <div className="px-5 py-4 border-t border-[#8B0000]/30 space-y-2">
-              <input placeholder="Username" className="w-full bg-black/50 border border-[#8B0000]/50 text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#E50914]" />
-              <input type="password" placeholder="Password" className="w-full bg-black/50 border border-[#8B0000]/50 text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#E50914]" />
+            <div className="px-5 py-4 border-t border-[#333]/30 space-y-2">
+              <input placeholder="Username" className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#E50914]" />
+              <input type="password" placeholder="Password" className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#E50914]" />
               <button className="w-full bg-[#E50914] hover:bg-[#CC0000] text-white text-sm font-bold py-2 rounded transition-colors">
                 LOGIN
               </button>

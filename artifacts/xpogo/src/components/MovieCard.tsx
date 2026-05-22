@@ -22,7 +22,7 @@ function StarRating({ score }: { score?: number }) {
           key={i}
           className="w-3 h-3"
           fill={i <= stars ? "#f5c518" : "none"}
-          stroke={i <= stars ? "#f5c518" : "#555"}
+          stroke={i <= stars ? "#f5c518" : "#444"}
           strokeWidth={1.5}
         />
       ))}
@@ -48,7 +48,7 @@ export default function MovieCard({
     <Link href={href}>
       <div className={`horror-card flex-shrink-0 ${widthClass} cursor-pointer group`}>
         {/* Poster */}
-        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a0000] mb-1.5 border border-[#8B0000]/30">
+        <div className="relative rounded overflow-hidden aspect-[2/3] bg-[#1a1a1a] mb-1.5">
           {posterPath ? (
             <img
               src={`${POSTER_BASE}${posterPath}`}
@@ -57,24 +57,31 @@ export default function MovieCard({
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-[#1a0000]">
-              <span className="text-[#8B0000] text-2xl">🎬</span>
+            <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+              <span className="text-[#E50914] text-2xl">🎬</span>
             </div>
           )}
 
-          {/* Dark red overlay on hover */}
+          {/* Gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
           {/* Year badge */}
           {year && (
-            <div className="absolute top-1 left-1 bg-black/80 text-[#E50914] text-[9px] font-bold px-1 py-0.5 rounded">
+            <div className="absolute top-1 left-1 bg-black/70 text-gray-300 text-[9px] font-semibold px-1.5 py-0.5 rounded">
               {year}
             </div>
           )}
 
           {/* Type badge */}
-          <div className="absolute top-1 right-1 bg-[#E50914]/90 text-white text-[8px] font-bold px-1 py-0.5 rounded uppercase">
+          <div className="absolute top-1 right-1 bg-[#E50914] text-white text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
             {mediaType === "tv" ? "Series" : "Film"}
+          </div>
+
+          {/* Play hint on hover */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 flex items-center justify-center">
+              <span className="text-white text-lg ml-0.5">▶</span>
+            </div>
           </div>
         </div>
 
@@ -84,9 +91,9 @@ export default function MovieCard({
         {/* Stars */}
         <StarRating score={rating} />
 
-        {/* See more link */}
+        {/* See more link on hover */}
         <p className="text-[#E50914] text-[10px] mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          See more
+          Lihat detail
         </p>
       </div>
     </Link>

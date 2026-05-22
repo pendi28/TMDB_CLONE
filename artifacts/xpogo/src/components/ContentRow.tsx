@@ -43,9 +43,9 @@ export default function ContentRow({ title, items, mediaType, showTitle = true }
         {/* Left arrow */}
         <button
           onClick={() => scroll("left")}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-16 bg-gradient-to-r from-[#0d0000] to-transparent flex items-center justify-start pl-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-full bg-gradient-to-r from-[#141414] to-transparent flex items-center justify-start pl-1 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <div className="bg-[#8B0000]/80 hover:bg-[#E50914] text-white rounded p-1 transition-colors">
+          <div className="bg-black/60 hover:bg-[#E50914] text-white rounded p-1.5 transition-colors border border-white/10">
             <ChevronLeft className="w-4 h-4" />
           </div>
         </button>
@@ -76,9 +76,9 @@ export default function ContentRow({ title, items, mediaType, showTitle = true }
         {/* Right arrow */}
         <button
           onClick={() => scroll("right")}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-16 bg-gradient-to-l from-[#0d0000] to-transparent flex items-center justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-full bg-gradient-to-l from-[#141414] to-transparent flex items-center justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <div className="bg-[#8B0000]/80 hover:bg-[#E50914] text-white rounded p-1 transition-colors">
+          <div className="bg-black/60 hover:bg-[#E50914] text-white rounded p-1.5 transition-colors border border-white/10">
             <ChevronRight className="w-4 h-4" />
           </div>
         </button>
