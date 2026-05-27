@@ -19,10 +19,10 @@ const BUILTIN = [
   { id: "vidlink",    name: "🔗 VidLink",               url: "vidlink" },
   { id: "nontongo",   name: "🎥 Nontongo",              url: "nontongo" },
   { id: "autoembed",  name: "🌐 AutoEmbed",             url: "autoembed" },
-  { id: "psyplay",   name: "🎭 PsyPlay",              url: "psyplay" },
-  { id: "auto-clean", name: "🚀 Auto Scraper (Clean)", url: "scraper" },
-  { id: "vidking",    name: "ZxcStream",               url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
-  { id: "vidsrc-to",  name: "VidSrc",                  url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
+  { id: "psyplay",    name: "🎭 PsyPlay",               url: "psyplay" },
+  { id: "auto-clean", name: "🚀 Auto Scraper (Clean)",  url: "scraper" },
+  { id: "vidking",    name: "ZxcStream",                url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
+  { id: "vidsrc-to",  name: "VidSrc",                   url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
 ];
 
 const DOWNLOAD_SOURCES_TV = [
@@ -31,25 +31,39 @@ const DOWNLOAD_SOURCES_TV = [
   { name: "⬇️ Download via MultiEmbed", url: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}` },
 ];
 
-// FIX: Daftar bahasa subtitle yang didukung Peachify
-const SUBTITLE_LANGUAGES = [
-  { code: "off",  name: "Nonaktif" },
-  { code: "id",   name: "Indonesia" },
-  { code: "en",   name: "English" },
-  { code: "ja",   name: "Japanese" },
-  { code: "ko",   name: "Korean" },
-  { code: "zh",   name: "Chinese" },
-  { code: "ar",   name: "Arabic" },
-  { code: "fr",   name: "French" },
-  { code: "de",   name: "German" },
-  { code: "es",   name: "Spanish" },
-  { code: "pt",   name: "Portuguese" },
-  { code: "ru",   name: "Russian" },
-  { code: "hi",   name: "Hindi" },
-  { code: "tr",   name: "Turkish" },
-  { code: "vi",   name: "Vietnamese" },
-  { code: "th",   name: "Thai" },
-  { code: "ms",   name: "Malay" },
+// Peachify API: subtitle uses language name or label (e.g. "Indonesian", "English")
+const SUBTITLE_OPTIONS = [
+  { value: "",            label: "Nonaktif" },
+  { value: "Indonesian",  label: "Indonesia" },
+  { value: "English",     label: "English" },
+  { value: "Japanese",    label: "Japanese" },
+  { value: "Korean",      label: "Korean" },
+  { value: "Chinese",     label: "Chinese" },
+  { value: "Arabic",      label: "Arabic" },
+  { value: "French",      label: "French" },
+  { value: "German",      label: "German" },
+  { value: "Spanish",     label: "Spanish" },
+  { value: "Portuguese",  label: "Portuguese" },
+  { value: "Russian",     label: "Russian" },
+  { value: "Hindi",       label: "Hindi" },
+  { value: "Turkish",     label: "Turkish" },
+  { value: "Vietnamese",  label: "Vietnamese" },
+  { value: "Thai",        label: "Thai" },
+  { value: "Malay",       label: "Malay" },
+];
+
+// Peachify API: dub/audio uses language name (e.g. "English", "Japanese")
+const AUDIO_OPTIONS = [
+  { value: "",           label: "Default" },
+  { value: "English",    label: "English" },
+  { value: "Japanese",   label: "Japanese" },
+  { value: "Korean",     label: "Korean" },
+  { value: "Chinese",    label: "Chinese" },
+  { value: "French",     label: "French" },
+  { value: "German",     label: "German" },
+  { value: "Spanish",    label: "Spanish" },
+  { value: "Portuguese", label: "Portuguese" },
+  { value: "Hindi",      label: "Hindi" },
 ];
 
 export default function TvPage() {
@@ -60,8 +74,9 @@ export default function TvPage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState("vidplus");
-  // FIX: State untuk bahasa subtitle, default Indonesia
-  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("id");
+  // Peachify subtitle & audio state
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("Indonesian");
+  const [selectedAudio, setSelectedAudio] = useState<string>("");
 
   const [scrapedUrl, setScrapedUrl] = useState<string | null>(null);
   const [isScraping, setIsScraping] = useState(false);
@@ -137,38 +152,37 @@ export default function TvPage() {
   }
 
   const getFinalUrl = () => {
-    // VidPlus
     if (selectedServerId === "vidplus") {
       return `https://player2.vidplus.pro/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
     }
-    // VidZee
     if (selectedServerId === "vidzee") {
       return `https://player.vidzee.wtf/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // VixSrc
     if (selectedServerId === "vixsrc") {
       return `https://vixsrc.to/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // FIX: Peachify — tambahkan parameter sub untuk bahasa subtitle
     if (selectedServerId === "peachify") {
+      // Peachify official API params
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(tvId, selectedSeason, selectedEpisode);
-      const params = new URLSearchParams({ accent, quality: "1080", autoNext: "1" });
+      const params = new URLSearchParams({
+        accent,
+        quality: "1080",
+        autoNext: "1",      // enable auto-next episode (Peachify API: autoNext)
+      });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
-      if (selectedSubtitle && selectedSubtitle !== "off") {
-        params.set("sub", selectedSubtitle);
-      }
+      // sub: target subtitle language name — falls back to user saved pref if unavailable
+      if (selectedSubtitle) params.set("sub", selectedSubtitle);
+      // dub: target audio language name
+      if (selectedAudio) params.set("dub", selectedAudio);
       return `https://peachify.top/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?${params}`;
     }
-    // 2Embed
     if (selectedServerId === "2embed") {
       return `https://www.2embed.cc/embedtv/${tvId}&s=${selectedSeason}&e=${selectedEpisode}`;
     }
-    // VidLink
     if (selectedServerId === "vidlink") {
       return `https://vidlink.pro/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true&nextbutton=true`;
     }
-    // Nontongo
     if (selectedServerId === "nontongo") {
       return `https://nontongo.win/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
@@ -178,13 +192,11 @@ export default function TvPage() {
     if (selectedServerId === "psyplay") {
       return `https://autoembed.co/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // Auto Scraper
     if (selectedServerId === "auto-clean") {
       if (isScraping) return "";
       if (scrapedUrl) return `https://artplayer.org/?url=${encodeURIComponent(scrapedUrl)}&autoPlay=true`;
       return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // Built-in / Custom
     const builtin = BUILTIN.find((b) => b.id === selectedServerId);
     const custom = (customServers as CustomServer[]).find((s) => s.id === selectedServerId);
     let template = builtin ? builtin.url : custom?.url;
@@ -196,9 +208,7 @@ export default function TvPage() {
   };
 
   const allServers = [
-    ...BUILTIN.filter(
-      (b) => (builtinStates as BuiltinServerState)?.[b.id] !== false
-    ),
+    ...BUILTIN.filter((b) => (builtinStates as BuiltinServerState)?.[b.id] !== false),
     ...(customServers as CustomServer[]).filter((s) => s.active),
   ];
 
@@ -231,7 +241,6 @@ export default function TvPage() {
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-white text-3xl font-black mb-2">{tv.name}</h1>
 
-            {/* Donghua badge + pinyin */}
             {isDonghua && (
               <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
                 <span className="bg-[#E50914] text-white text-[10px] font-black px-2 py-0.5 rounded">DONGHUA</span>
@@ -245,7 +254,6 @@ export default function TvPage() {
               <span className="inline-block bg-[#0369a1] text-white text-[10px] font-black px-2 py-0.5 rounded mb-3">K-DRAMA</span>
             )}
 
-            {/* Status */}
             {tv.status && (
               <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
                 <span className={`text-[10px] font-black px-3 py-1 rounded border ${
@@ -319,35 +327,60 @@ export default function TvPage() {
                   }`}
                 >
                   {s.name}
-                  {s.id === "vidplus"  && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">PRO</span>}
-                  {s.id === "vidzee"   && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
-                  {s.id === "vixsrc"   && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
-                  {s.id === "2embed"   && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
-                  {s.id === "vidlink"  && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
+                  {s.id === "vidplus"   && <span className="ml-1 bg-[#6C63FF] text-white text-[8px] px-1 rounded">PRO</span>}
+                  {s.id === "vidzee"    && <span className="ml-1 bg-[#FF6B35] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vixsrc"    && <span className="ml-1 bg-[#059669] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "2embed"    && <span className="ml-1 bg-[#0ea5e9] text-white text-[8px] px-1 rounded">HD</span>}
+                  {s.id === "vidlink"   && <span className="ml-1 bg-[#f59e0b] text-white text-[8px] px-1 rounded">NEW</span>}
                   {s.id === "autoembed" && <span className="ml-1 bg-[#16a34a] text-white text-[8px] px-1 rounded">FREE</span>}
                   {s.id === "psyplay"   && <span className="ml-1 bg-[#7c3aed] text-white text-[8px] px-1 rounded">PSY</span>}
-                  {s.id === "nontongo" && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
+                  {s.id === "nontongo"  && <span className="ml-1 bg-[#10b981] text-white text-[8px] px-1 rounded">ALT</span>}
                 </button>
               ))}
             </div>
 
-            {/* FIX: Subtitle selector — hanya tampil saat Peachify aktif */}
+            {/* Peachify-only: Subtitle & Audio selector */}
             {isPeachify && (
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider">Subtitle:</span>
-                {SUBTITLE_LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => setSelectedSubtitle(lang.code)}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
-                      selectedSubtitle === lang.code
-                        ? "bg-[#E50914] border-[#E50914] text-white"
-                        : "border-[#8B0000]/50 bg-[#1a0000] text-gray-400 hover:border-[#E50914] hover:text-white"
-                    }`}
-                  >
-                    {lang.name}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2 mb-4 p-3 bg-[#1a0000] rounded-lg border border-[#8B0000]/30">
+                {/* Subtitle */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Subtitle:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUBTITLE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedSubtitle(opt.value)}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
+                          selectedSubtitle === opt.value
+                            ? "bg-[#E50914] border-[#E50914] text-white"
+                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#E50914] hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Audio / Dub */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Audio:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AUDIO_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedAudio(opt.value)}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
+                          selectedAudio === opt.value
+                            ? "bg-[#6C63FF] border-[#6C63FF] text-white"
+                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#6C63FF] hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
