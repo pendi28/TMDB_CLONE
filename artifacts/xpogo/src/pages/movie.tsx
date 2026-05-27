@@ -32,41 +32,6 @@ const DOWNLOAD_SOURCES = [
   { name: "⬇️ Download via VidSrc",       url: (id: number) => `https://dl.vidsrc.vip/movie/${id}` },
 ];
 
-// Peachify API: subtitle uses language name or label (e.g. "Indonesian", "English")
-const SUBTITLE_OPTIONS = [
-  { value: "",            label: "Nonaktif" },
-  { value: "Indonesian",  label: "Indonesia" },
-  { value: "English",     label: "English" },
-  { value: "Japanese",    label: "Japanese" },
-  { value: "Korean",      label: "Korean" },
-  { value: "Chinese",     label: "Chinese" },
-  { value: "Arabic",      label: "Arabic" },
-  { value: "French",      label: "French" },
-  { value: "German",      label: "German" },
-  { value: "Spanish",     label: "Spanish" },
-  { value: "Portuguese",  label: "Portuguese" },
-  { value: "Russian",     label: "Russian" },
-  { value: "Hindi",       label: "Hindi" },
-  { value: "Turkish",     label: "Turkish" },
-  { value: "Vietnamese",  label: "Vietnamese" },
-  { value: "Thai",        label: "Thai" },
-  { value: "Malay",       label: "Malay" },
-];
-
-// Peachify API: dub/audio uses language name (e.g. "English", "Japanese")
-const AUDIO_OPTIONS = [
-  { value: "",          label: "Default" },
-  { value: "English",   label: "English" },
-  { value: "Japanese",  label: "Japanese" },
-  { value: "Korean",    label: "Korean" },
-  { value: "Chinese",   label: "Chinese" },
-  { value: "French",    label: "French" },
-  { value: "German",    label: "German" },
-  { value: "Spanish",   label: "Spanish" },
-  { value: "Portuguese", label: "Portuguese" },
-  { value: "Hindi",     label: "Hindi" },
-];
-
 function StarRating({ score }: { score?: number }) {
   const val = score ?? 0;
   const stars = Math.round(val / 2);
@@ -90,9 +55,6 @@ export default function MoviePage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [activeServerId, setActiveServerId] = useState<string>("vidplus");
-  // Peachify subtitle & audio state
-  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("Indonesian");
-  const [selectedAudio, setSelectedAudio] = useState<string>("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPeachify = activeServerId === "peachify";
   usePeachifyPostMessage(isPeachify && showPlayer);
@@ -137,18 +99,10 @@ export default function MoviePage() {
       return `https://vixsrc.to/movie/${movieId}`;
     }
     if (activeServerId === "peachify") {
-      // Peachify official API params
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(movieId);
-      const params = new URLSearchParams({
-        accent,
-        quality: "1080",
-      });
+      const params = new URLSearchParams({ accent, quality: "1080" });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
-      // sub: target subtitle language name — falls back to user saved pref if unavailable
-      if (selectedSubtitle) params.set("sub", selectedSubtitle);
-      // dub: target audio language name
-      if (selectedAudio) params.set("dub", selectedAudio);
       return `https://peachify.top/embed/movie/${movieId}?${params}`;
     }
     if (activeServerId === "2embed") {
@@ -301,7 +255,6 @@ export default function MoviePage() {
         {/* Player */}
         {showPlayer && (
           <div className="mt-8">
-            {/* Server selector */}
             <div className="flex flex-wrap gap-2 mb-3 items-center">
               <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider mr-1">Server:</span>
               {allServers.map((s) => (
@@ -327,52 +280,10 @@ export default function MoviePage() {
               ))}
             </div>
 
-            {/* Peachify-only: Subtitle & Audio selector */}
-            {isPeachify && (
-              <div className="flex flex-col gap-2 mb-3 p-3 bg-[#1a0000] rounded-lg border border-[#8B0000]/30">
-                {/* Subtitle */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Subtitle:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SUBTITLE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedSubtitle(opt.value)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
-                          selectedSubtitle === opt.value
-                            ? "bg-[#E50914] border-[#E50914] text-white"
-                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#E50914] hover:text-white"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Audio / Dub */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Audio:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {AUDIO_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedAudio(opt.value)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
-                          selectedAudio === opt.value
-                            ? "bg-[#6C63FF] border-[#6C63FF] text-white"
-                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#6C63FF] hover:text-white"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]" style={{ paddingTop: "56.25%" }}>
+            <div
+              className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
+              style={{ paddingTop: "56.25%" }}
+            >
               <iframe
                 ref={iframeRef}
                 src={getFinalPlayerUrl()}

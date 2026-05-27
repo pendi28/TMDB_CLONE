@@ -31,41 +31,6 @@ const DOWNLOAD_SOURCES_TV = [
   { name: "⬇️ Download via MultiEmbed", url: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}` },
 ];
 
-// Peachify API: subtitle uses language name or label (e.g. "Indonesian", "English")
-const SUBTITLE_OPTIONS = [
-  { value: "",            label: "Nonaktif" },
-  { value: "Indonesian",  label: "Indonesia" },
-  { value: "English",     label: "English" },
-  { value: "Japanese",    label: "Japanese" },
-  { value: "Korean",      label: "Korean" },
-  { value: "Chinese",     label: "Chinese" },
-  { value: "Arabic",      label: "Arabic" },
-  { value: "French",      label: "French" },
-  { value: "German",      label: "German" },
-  { value: "Spanish",     label: "Spanish" },
-  { value: "Portuguese",  label: "Portuguese" },
-  { value: "Russian",     label: "Russian" },
-  { value: "Hindi",       label: "Hindi" },
-  { value: "Turkish",     label: "Turkish" },
-  { value: "Vietnamese",  label: "Vietnamese" },
-  { value: "Thai",        label: "Thai" },
-  { value: "Malay",       label: "Malay" },
-];
-
-// Peachify API: dub/audio uses language name (e.g. "English", "Japanese")
-const AUDIO_OPTIONS = [
-  { value: "",           label: "Default" },
-  { value: "English",    label: "English" },
-  { value: "Japanese",   label: "Japanese" },
-  { value: "Korean",     label: "Korean" },
-  { value: "Chinese",    label: "Chinese" },
-  { value: "French",     label: "French" },
-  { value: "German",     label: "German" },
-  { value: "Spanish",    label: "Spanish" },
-  { value: "Portuguese", label: "Portuguese" },
-  { value: "Hindi",      label: "Hindi" },
-];
-
 export default function TvPage() {
   const { id } = useParams<{ id: string }>();
   const tvId = Number(id);
@@ -74,9 +39,6 @@ export default function TvPage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState("vidplus");
-  // Peachify subtitle & audio state
-  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("Indonesian");
-  const [selectedAudio, setSelectedAudio] = useState<string>("");
 
   const [scrapedUrl, setScrapedUrl] = useState<string | null>(null);
   const [isScraping, setIsScraping] = useState(false);
@@ -162,19 +124,10 @@ export default function TvPage() {
       return `https://vixsrc.to/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
     if (selectedServerId === "peachify") {
-      // Peachify official API params
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(tvId, selectedSeason, selectedEpisode);
-      const params = new URLSearchParams({
-        accent,
-        quality: "1080",
-        autoNext: "1",      // enable auto-next episode (Peachify API: autoNext)
-      });
+      const params = new URLSearchParams({ accent, quality: "1080", autoNext: "1" });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
-      // sub: target subtitle language name — falls back to user saved pref if unavailable
-      if (selectedSubtitle) params.set("sub", selectedSubtitle);
-      // dub: target audio language name
-      if (selectedAudio) params.set("dub", selectedAudio);
       return `https://peachify.top/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?${params}`;
     }
     if (selectedServerId === "2embed") {
@@ -338,51 +291,6 @@ export default function TvPage() {
                 </button>
               ))}
             </div>
-
-            {/* Peachify-only: Subtitle & Audio selector */}
-            {isPeachify && (
-              <div className="flex flex-col gap-2 mb-4 p-3 bg-[#1a0000] rounded-lg border border-[#8B0000]/30">
-                {/* Subtitle */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Subtitle:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SUBTITLE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedSubtitle(opt.value)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
-                          selectedSubtitle === opt.value
-                            ? "bg-[#E50914] border-[#E50914] text-white"
-                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#E50914] hover:text-white"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Audio / Dub */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider w-14 flex-shrink-0">Audio:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {AUDIO_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedAudio(opt.value)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
-                          selectedAudio === opt.value
-                            ? "bg-[#6C63FF] border-[#6C63FF] text-white"
-                            : "border-[#8B0000]/50 bg-[#0d0000] text-gray-400 hover:border-[#6C63FF] hover:text-white"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* iframe */}
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-[#8B0000]/30">
