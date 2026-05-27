@@ -31,6 +31,27 @@ const DOWNLOAD_SOURCES_TV = [
   { name: "⬇️ Download via MultiEmbed", url: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}` },
 ];
 
+// FIX: Daftar bahasa subtitle yang didukung Peachify
+const SUBTITLE_LANGUAGES = [
+  { code: "off",  name: "Nonaktif" },
+  { code: "id",   name: "Indonesia" },
+  { code: "en",   name: "English" },
+  { code: "ja",   name: "Japanese" },
+  { code: "ko",   name: "Korean" },
+  { code: "zh",   name: "Chinese" },
+  { code: "ar",   name: "Arabic" },
+  { code: "fr",   name: "French" },
+  { code: "de",   name: "German" },
+  { code: "es",   name: "Spanish" },
+  { code: "pt",   name: "Portuguese" },
+  { code: "ru",   name: "Russian" },
+  { code: "hi",   name: "Hindi" },
+  { code: "tr",   name: "Turkish" },
+  { code: "vi",   name: "Vietnamese" },
+  { code: "th",   name: "Thai" },
+  { code: "ms",   name: "Malay" },
+];
+
 export default function TvPage() {
   const { id } = useParams<{ id: string }>();
   const tvId = Number(id);
@@ -39,6 +60,8 @@ export default function TvPage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState("vidplus");
+  // FIX: State untuk bahasa subtitle, default Indonesia
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("id");
 
   const [scrapedUrl, setScrapedUrl] = useState<string | null>(null);
   const [isScraping, setIsScraping] = useState(false);
@@ -126,12 +149,15 @@ export default function TvPage() {
     if (selectedServerId === "vixsrc") {
       return `https://vixsrc.to/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
-    // Peachify — FIXED: gunakan path params bukan query params
+    // FIX: Peachify — tambahkan parameter sub untuk bahasa subtitle
     if (selectedServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(tvId, selectedSeason, selectedEpisode);
       const params = new URLSearchParams({ accent, quality: "1080", autoNext: "1" });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
+      if (selectedSubtitle && selectedSubtitle !== "off") {
+        params.set("sub", selectedSubtitle);
+      }
       return `https://peachify.top/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?${params}`;
     }
     // 2Embed
@@ -304,6 +330,26 @@ export default function TvPage() {
                 </button>
               ))}
             </div>
+
+            {/* FIX: Subtitle selector — hanya tampil saat Peachify aktif */}
+            {isPeachify && (
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider">Subtitle:</span>
+                {SUBTITLE_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setSelectedSubtitle(lang.code)}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
+                      selectedSubtitle === lang.code
+                        ? "bg-[#E50914] border-[#E50914] text-white"
+                        : "border-[#8B0000]/50 bg-[#1a0000] text-gray-400 hover:border-[#E50914] hover:text-white"
+                    }`}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* iframe */}
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-[#8B0000]/30">

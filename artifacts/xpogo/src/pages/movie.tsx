@@ -32,6 +32,27 @@ const DOWNLOAD_SOURCES = [
   { name: "⬇️ Download via VidSrc",       url: (id: number) => `https://dl.vidsrc.vip/movie/${id}` },
 ];
 
+// FIX: Daftar bahasa subtitle yang didukung Peachify
+const SUBTITLE_LANGUAGES = [
+  { code: "off",  name: "Nonaktif" },
+  { code: "id",   name: "Indonesia" },
+  { code: "en",   name: "English" },
+  { code: "ja",   name: "Japanese" },
+  { code: "ko",   name: "Korean" },
+  { code: "zh",   name: "Chinese" },
+  { code: "ar",   name: "Arabic" },
+  { code: "fr",   name: "French" },
+  { code: "de",   name: "German" },
+  { code: "es",   name: "Spanish" },
+  { code: "pt",   name: "Portuguese" },
+  { code: "ru",   name: "Russian" },
+  { code: "hi",   name: "Hindi" },
+  { code: "tr",   name: "Turkish" },
+  { code: "vi",   name: "Vietnamese" },
+  { code: "th",   name: "Thai" },
+  { code: "ms",   name: "Malay" },
+];
+
 function StarRating({ score }: { score?: number }) {
   const val = score ?? 0;
   const stars = Math.round(val / 2);
@@ -55,6 +76,8 @@ export default function MoviePage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [activeServerId, setActiveServerId] = useState<string>("vidplus");
+  // FIX: State untuk bahasa subtitle, default Indonesia
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("id");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPeachify = activeServerId === "peachify";
   usePeachifyPostMessage(isPeachify && showPlayer);
@@ -101,12 +124,15 @@ export default function MoviePage() {
     if (activeServerId === "vixsrc") {
       return `https://vixsrc.to/movie/${movieId}`;
     }
-    // Peachify
+    // FIX: Peachify — tambahkan parameter sub untuk bahasa subtitle
     if (activeServerId === "peachify") {
       const accent = (settings?.playerColor ?? "E50914").replace("#", "");
       const startAt = getSavedStartAt(movieId);
       const params = new URLSearchParams({ accent, quality: "1080" });
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
+      if (selectedSubtitle && selectedSubtitle !== "off") {
+        params.set("sub", selectedSubtitle);
+      }
       return `https://peachify.top/embed/movie/${movieId}?${params}`;
     }
     // 2Embed
@@ -288,6 +314,26 @@ export default function MoviePage() {
                 </button>
               ))}
             </div>
+
+            {/* FIX: Subtitle selector — hanya tampil saat Peachify aktif */}
+            {isPeachify && (
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider">Subtitle:</span>
+                {SUBTITLE_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setSelectedSubtitle(lang.code)}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
+                      selectedSubtitle === lang.code
+                        ? "bg-[#E50914] border-[#E50914] text-white"
+                        : "border-[#8B0000]/50 bg-[#1a0000] text-gray-400 hover:border-[#E50914] hover:text-white"
+                    }`}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]" style={{ paddingTop: "56.25%" }}>
               <iframe
