@@ -21,7 +21,7 @@ const BUILTIN_LIST = [
   { id: "autoembed", name: "🌐 AutoEmbed",        url: "autoembed" },
   { id: "psyplay",   name: "🎭 PsyPlay",          url: "psyplay" },
   { id: "myvercel",  name: "Server Utama",       url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}" },
+  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}?server=1&color=E50914&autoplay=true&back=true" },
   { id: "vidsrc-to", name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
   { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
@@ -283,26 +283,19 @@ export default function MoviePage() {
               ))}
             </div>
 
-            {/*
-              FIX: Removed overflow-hidden from container so the player inside the iframe
-              can properly request fullscreen at native screen resolution.
-              overflow-hidden clips the iframe stacking context and causes embed players
-              to render at iframe dimensions instead of full screen when fullscreen is triggered.
-              Border-radius is applied directly to the iframe element instead.
-            */}
             <div
-              className="relative w-full bg-black border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
-              style={{ paddingTop: "56.25%", borderRadius: "0.5rem" }}
+              className={`relative w-full bg-black rounded-lg border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)] ${activeServerId !== "vidking" ? "overflow-hidden" : ""}`}
+              style={{ paddingTop: "56.25%" }}
             >
               <iframe
                 ref={iframeRef}
                 src={getFinalPlayerUrl()}
                 className="absolute inset-0 w-full h-full"
-                style={{ borderRadius: "0.5rem" }}
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
                 scrolling="no"
                 frameBorder="0"
+                referrerPolicy={activeServerId === "vidking" ? "no-referrer" : undefined}
               />
             </div>
           </div>

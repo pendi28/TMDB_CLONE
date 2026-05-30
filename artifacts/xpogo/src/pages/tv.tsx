@@ -21,7 +21,7 @@ const BUILTIN = [
   { id: "autoembed",  name: "🌐 AutoEmbed",             url: "autoembed" },
   { id: "psyplay",    name: "🎭 PsyPlay",               url: "psyplay" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)",  url: "scraper" },
-  { id: "vidking",    name: "ZxcStream",                url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}" },
+  { id: "vidking",    name: "ZxcStream",                url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}?server=1&color=E50914&autoplay=true&back=true" },
   { id: "vidsrc-to",  name: "VidSrc",                   url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
 ];
 
@@ -151,7 +151,7 @@ export default function TvPage() {
     if (selectedServerId === "auto-clean") {
       if (isScraping) return "";
       if (scrapedUrl) return `https://artplayer.org/?url=${encodeURIComponent(scrapedUrl)}&autoPlay=true`;
-      return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
+      return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}?server=1&color=E50914&autoplay=true&back=true`;
     }
     const builtin = BUILTIN.find((b) => b.id === selectedServerId);
     const custom = (customServers as CustomServer[]).find((s) => s.id === selectedServerId);
@@ -295,19 +295,9 @@ export default function TvPage() {
               ))}
             </div>
 
-            {/*
-              FIX: Removed overflow-hidden from container so the player inside the iframe
-              can properly request fullscreen at native screen resolution.
-              overflow-hidden clips the iframe stacking context and causes embed players
-              to render at iframe dimensions instead of full screen when fullscreen is triggered.
-              Border-radius is applied directly to the iframe element instead.
-            */}
-            <div
-              className="relative w-full bg-black shadow-2xl border border-[#8B0000]/30"
-              style={{ aspectRatio: "16/9", borderRadius: "0.75rem" }}
-            >
+            <div className={`relative w-full aspect-video bg-black rounded-xl shadow-2xl border border-[#8B0000]/30 ${selectedServerId !== "vidking" && selectedServerId !== "auto-clean" ? "overflow-hidden" : ""}`}>
               {isScraping && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20" style={{ borderRadius: "0.75rem" }}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
                   <Loader2 className="w-8 h-8 animate-spin text-[#E50914] mb-2" />
                   <p className="text-[10px] text-white font-black">MENCARI VIDEO...</p>
                 </div>
@@ -316,11 +306,11 @@ export default function TvPage() {
                 ref={iframeRef}
                 src={getFinalUrl()}
                 className="absolute inset-0 w-full h-full"
-                style={{ borderRadius: "0.75rem" }}
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
                 scrolling="no"
                 frameBorder="0"
+                referrerPolicy={(selectedServerId === "vidking" || selectedServerId === "auto-clean") ? "no-referrer" : undefined}
               />
             </div>
           </div>
