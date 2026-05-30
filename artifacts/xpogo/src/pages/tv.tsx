@@ -295,7 +295,7 @@ export default function TvPage() {
               ))}
             </div>
 
-            <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-[#8B0000]/30">
+            <div className={`relative w-full aspect-video bg-black rounded-xl shadow-2xl border border-[#8B0000]/30 ${selectedServerId !== "vidking" && selectedServerId !== "auto-clean" ? "overflow-hidden" : ""}`}>
               {isScraping && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
                   <Loader2 className="w-8 h-8 animate-spin text-[#E50914] mb-2" />
@@ -307,7 +307,7 @@ export default function TvPage() {
                 src={getFinalUrl()}
                 className="absolute inset-0 w-full h-full"
                 allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
+                allow="fullscreen *; autoplay; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
                 scrolling="no"
                 frameBorder="0"
                 referrerPolicy={(selectedServerId === "vidking" || selectedServerId === "auto-clean") ? "no-referrer" : undefined}

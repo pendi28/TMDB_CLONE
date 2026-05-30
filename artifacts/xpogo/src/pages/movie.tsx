@@ -284,7 +284,7 @@ export default function MoviePage() {
             </div>
 
             <div
-              className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
+              className={`relative w-full bg-black rounded-lg border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)] ${activeServerId !== "vidking" ? "overflow-hidden" : ""}`}
               style={{ paddingTop: "56.25%" }}
             >
               <iframe
@@ -292,7 +292,7 @@ export default function MoviePage() {
                 src={getFinalPlayerUrl()}
                 className="absolute inset-0 w-full h-full"
                 allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
+                allow="fullscreen *; autoplay; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
                 scrolling="no"
                 frameBorder="0"
                 referrerPolicy={activeServerId === "vidking" ? "no-referrer" : undefined}
