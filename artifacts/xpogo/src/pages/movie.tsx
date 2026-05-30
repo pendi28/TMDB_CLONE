@@ -21,7 +21,7 @@ const BUILTIN_LIST = [
   { id: "autoembed", name: "🌐 AutoEmbed",        url: "autoembed" },
   { id: "psyplay",   name: "🎭 PsyPlay",          url: "psyplay" },
   { id: "myvercel",  name: "Server Utama",       url: "https://myvercel-player.vercel.app/embed/{type}/{id}" },
-  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}?server=1&color=E50914&autoplay=true&back=true" },
+  { id: "vidking",   name: "ZxcStream",          url: "https://zxcstream.xyz/player/movie/{id}?server=1&domainAd=zxcstream.icu&color=E50914&autoplay=true" },
   { id: "vidsrc-to", name: "VidSrc",             url: "https://vidsrc.to/embed/{type}/{id}" },
   { id: "vidsrcxyz", name: "VidSrc.xyz",         url: "https://vidsrc.xyz/embed/{type}/{id}" },
 ];
@@ -284,7 +284,7 @@ export default function MoviePage() {
             </div>
 
             <div
-              className={`relative w-full bg-black rounded-lg border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)] ${activeServerId !== "vidking" ? "overflow-hidden" : ""}`}
+              className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
               style={{ paddingTop: "56.25%" }}
             >
               <iframe

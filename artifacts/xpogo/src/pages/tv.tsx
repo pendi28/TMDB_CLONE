@@ -21,7 +21,7 @@ const BUILTIN = [
   { id: "autoembed",  name: "🌐 AutoEmbed",             url: "autoembed" },
   { id: "psyplay",    name: "🎭 PsyPlay",               url: "psyplay" },
   { id: "auto-clean", name: "🚀 Auto Scraper (Clean)",  url: "scraper" },
-  { id: "vidking",    name: "ZxcStream",                url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}?server=1&color=E50914&autoplay=true&back=true" },
+  { id: "vidking",    name: "ZxcStream",                url: "https://zxcstream.xyz/player/tv/{id}/{s}/{e}?server=1&domainAd=zxcstream.icu&color=E50914&autoplay=true" },
   { id: "vidsrc-to",  name: "VidSrc",                   url: "https://vidsrc.to/embed/tv/{id}/{s}/{e}" },
 ];
 
@@ -151,7 +151,7 @@ export default function TvPage() {
     if (selectedServerId === "auto-clean") {
       if (isScraping) return "";
       if (scrapedUrl) return `https://artplayer.org/?url=${encodeURIComponent(scrapedUrl)}&autoPlay=true`;
-      return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}?server=1&color=E50914&autoplay=true&back=true`;
+      return `https://zxcstream.xyz/player/tv/${tvId}/${selectedSeason}/${selectedEpisode}?server=1&domainAd=zxcstream.icu&color=E50914&autoplay=true`;
     }
     const builtin = BUILTIN.find((b) => b.id === selectedServerId);
     const custom = (customServers as CustomServer[]).find((s) => s.id === selectedServerId);
@@ -295,7 +295,7 @@ export default function TvPage() {
               ))}
             </div>
 
-            <div className={`relative w-full aspect-video bg-black rounded-xl shadow-2xl border border-[#8B0000]/30 ${selectedServerId !== "vidking" && selectedServerId !== "auto-clean" ? "overflow-hidden" : ""}`}>
+            <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-[#8B0000]/30">
               {isScraping && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
                   <Loader2 className="w-8 h-8 animate-spin text-[#E50914] mb-2" />
