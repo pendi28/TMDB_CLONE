@@ -130,17 +130,20 @@ export default function TvPage() {
       if (startAt > 0) params.set("startAt", String(Math.floor(startAt)));
       return `https://peachify.top/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}?${params}`;
     }
+    // FIX: was missing ? before s= — season/episode were not being passed correctly
     if (selectedServerId === "2embed") {
-      return `https://www.2embed.cc/embedtv/${tvId}&s=${selectedSeason}&e=${selectedEpisode}`;
+      return `https://www.2embed.cc/embedtv/${tvId}?s=${selectedSeason}&e=${selectedEpisode}`;
     }
     if (selectedServerId === "vidlink") {
       return `https://vidlink.pro/tv/${tvId}/${selectedSeason}/${selectedEpisode}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true&nextbutton=true`;
     }
+    // FIX: consistent www. prefix
     if (selectedServerId === "nontongo") {
-      return `https://nontongo.win/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
+      return `https://www.nontongo.win/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
     }
+    // FIX: added tmdb=1 so autoembed correctly resolves TMDB IDs
     if (selectedServerId === "autoembed") {
-      return `https://autoembed.cc/embed/tv/${tvId}?s=${selectedSeason}&e=${selectedEpisode}`;
+      return `https://autoembed.cc/embed/tv/${tvId}?s=${selectedSeason}&e=${selectedEpisode}&tmdb=1`;
     }
     if (selectedServerId === "psyplay") {
       return `https://autoembed.co/embed/tv/${tvId}/${selectedSeason}/${selectedEpisode}`;
@@ -292,10 +295,19 @@ export default function TvPage() {
               ))}
             </div>
 
-            {/* iframe */}
-            <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-[#8B0000]/30">
+            {/*
+              FIX: Removed overflow-hidden from container so the player inside the iframe
+              can properly request fullscreen at native screen resolution.
+              overflow-hidden clips the iframe stacking context and causes embed players
+              to render at iframe dimensions instead of full screen when fullscreen is triggered.
+              Border-radius is applied directly to the iframe element instead.
+            */}
+            <div
+              className="relative w-full bg-black shadow-2xl border border-[#8B0000]/30"
+              style={{ aspectRatio: "16/9", borderRadius: "0.75rem" }}
+            >
               {isScraping && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20" style={{ borderRadius: "0.75rem" }}>
                   <Loader2 className="w-8 h-8 animate-spin text-[#E50914] mb-2" />
                   <p className="text-[10px] text-white font-black">MENCARI VIDEO...</p>
                 </div>
@@ -304,9 +316,9 @@ export default function TvPage() {
                 ref={iframeRef}
                 src={getFinalUrl()}
                 className="absolute inset-0 w-full h-full"
+                style={{ borderRadius: "0.75rem" }}
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
-                referrerPolicy="no-referrer"
                 scrolling="no"
                 frameBorder="0"
               />

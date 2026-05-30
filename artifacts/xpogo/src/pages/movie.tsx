@@ -89,8 +89,9 @@ export default function MoviePage() {
   }
 
   const getFinalPlayerUrl = () => {
+    // FIX: removed autonext=true (not applicable for movies)
     if (activeServerId === "vidplus") {
-      return `https://player2.vidplus.pro/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&autonext=true&icons=netflix`;
+      return `https://player2.vidplus.pro/embed/movie/${movieId}?primarycolor=E50914&secondarycolor=170000&iconcolor=FFFFFF&autoplay=true&icons=netflix`;
     }
     if (activeServerId === "vidzee") {
       return `https://player.vidzee.wtf/embed/movie/${movieId}`;
@@ -108,14 +109,16 @@ export default function MoviePage() {
     if (activeServerId === "2embed") {
       return `https://www.2embed.cc/embed/${movieId}`;
     }
+    // FIX: removed nextbutton=true (not applicable for movies)
     if (activeServerId === "vidlink") {
-      return `https://vidlink.pro/movie/${movieId}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true&nextbutton=true`;
+      return `https://vidlink.pro/movie/${movieId}?primaryColor=E50914&secondaryColor=170000&iconColor=FFFFFF&autoplay=true`;
     }
     if (activeServerId === "nontongo") {
       return `https://www.nontongo.win/embed/movie/${movieId}`;
     }
+    // FIX: added tmdb=1 so autoembed correctly resolves TMDB IDs
     if (activeServerId === "autoembed") {
-      return `https://autoembed.cc/embed/movie/${movieId}`;
+      return `https://autoembed.cc/embed/movie/${movieId}?tmdb=1`;
     }
     if (activeServerId === "psyplay") {
       return `https://autoembed.co/embed/movie/${movieId}`;
@@ -280,17 +283,24 @@ export default function MoviePage() {
               ))}
             </div>
 
+            {/*
+              FIX: Removed overflow-hidden from container so the player inside the iframe
+              can properly request fullscreen at native screen resolution.
+              overflow-hidden clips the iframe stacking context and causes embed players
+              to render at iframe dimensions instead of full screen when fullscreen is triggered.
+              Border-radius is applied directly to the iframe element instead.
+            */}
             <div
-              className="relative w-full bg-black rounded-lg overflow-hidden border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
-              style={{ paddingTop: "56.25%" }}
+              className="relative w-full bg-black border border-[#8B0000]/30 shadow-[0_0_30px_rgba(139,0,0,0.3)]"
+              style={{ paddingTop: "56.25%", borderRadius: "0.5rem" }}
             >
               <iframe
                 ref={iframeRef}
                 src={getFinalPlayerUrl()}
                 className="absolute inset-0 w-full h-full"
+                style={{ borderRadius: "0.5rem" }}
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write"
-                referrerPolicy="no-referrer"
                 scrolling="no"
                 frameBorder="0"
               />
