@@ -168,6 +168,7 @@ export interface CustomServer {
   id: string;
   name: string;
   url: string;
+  tvUrl?: string;
   active: boolean;
   createdAt?: number;
 }
