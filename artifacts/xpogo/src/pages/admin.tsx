@@ -706,17 +706,27 @@ function ServerTab() {
 
   const toggleBuiltin = useMutation({ mutationFn: ({ id, val }: { id: string; val: boolean }) => fb.setBuiltinServerState(id, val), onSuccess: () => qc.invalidateQueries({ queryKey: ["builtin_states"] }) });
   const addSrv = useMutation({
-    mutationFn: () => fb.addCustomServer({ name: srvName, url: srvMovieUrl, active: true, createdAt: Date.now() }),
+    mutationFn: () => fb.addCustomServer({
+      name: srvName,
+      url: srvMovieUrl.trim(),
+      tvUrl: srvTvUrl.trim(),
+      active: true,
+      createdAt: Date.now(),
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["custom_servers"] }); setSrvName(""); setSrvMovieUrl(""); setSrvTvUrl(""); setAddOpen(false); },
   });
   const updateSrv = useMutation({
-    mutationFn: () => fb.updateCustomServer(editSrv!.id, { name: srvName, url: srvMovieUrl }),
+    mutationFn: () => fb.updateCustomServer(editSrv!.id, {
+      name: srvName,
+      url: srvMovieUrl.trim(),
+      tvUrl: srvTvUrl.trim(),
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["custom_servers"] }); setEditSrv(null); setSrvName(""); setSrvMovieUrl(""); setSrvTvUrl(""); },
   });
   const delSrv = useMutation({ mutationFn: (id: string) => fb.deleteCustomServer(id), onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_servers"] }) });
   const toggleCustom = useMutation({ mutationFn: ({ id, active }: { id: string; active: boolean }) => fb.updateCustomServer(id, { active }), onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_servers"] }) });
 
-  const openEdit = (s: CustomServer) => { setEditSrv(s); setSrvName(s.name); setSrvMovieUrl(s.url); setSrvTvUrl(""); setAddOpen(false); };
+  const openEdit = (s: CustomServer) => { setEditSrv(s); setSrvName(s.name); setSrvMovieUrl(s.url); setSrvTvUrl(s.tvUrl ?? ""); setAddOpen(false); };
   const openNew = () => { setEditSrv(null); setSrvName(""); setSrvMovieUrl(""); setSrvTvUrl(""); setAddOpen(true); };
   const closeForm = () => { setAddOpen(false); setEditSrv(null); setSrvName(""); setSrvMovieUrl(""); setSrvTvUrl(""); };
 
