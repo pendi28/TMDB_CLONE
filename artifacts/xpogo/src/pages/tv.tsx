@@ -155,7 +155,7 @@ export default function TvPage() {
     }
     const builtin = BUILTIN.find((b) => b.id === selectedServerId);
     const custom = (customServers as CustomServer[]).find((s) => s.id === selectedServerId);
-    let template = builtin ? builtin.url : custom?.url;
+    let template = builtin ? builtin.url : (custom?.tvUrl || custom?.url);
     if (!template) return "";
     return template
       .replace("{id}", String(tvId))
